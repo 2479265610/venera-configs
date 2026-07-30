@@ -24,7 +24,7 @@ class LaiManHua extends ComicSource {
 
   minAppVersion = "1.0.0";
 
-  url = "";
+  url = "https://raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/laimh.js";
 
   baseUrl = "https://m.comemh8.com";
 
