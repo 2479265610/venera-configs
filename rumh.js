@@ -13,7 +13,7 @@ class RuManHua extends ComicSource {
   key = "rumanhua2";
   version = "4.0.0";
   minAppVersion = "1.0.0";
-  url = "";
+  url = "https://raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/rumh.js";
 
   baseUrl = "http://m.rumanhua2.com";
   UA =
