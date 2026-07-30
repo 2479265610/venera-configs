@@ -10,7 +10,7 @@
 可通过 `index.json` 自动添加漫画源，无需手动配置。直接使用以下原始链接导入：
 
 ```
-1
+https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/index.json
 ```
 
 **注意事项：**
