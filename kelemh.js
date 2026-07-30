@@ -13,7 +13,7 @@ class KeLeMH extends ComicSource {
   key = "kelemh";
   version = "4.2.0";
   minAppVersion = "1.0.0";
-  url = "https://raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/kelemh.js";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/kelemh.js";
   baseUrl = "https://www.kelemh.com";
   UA = "Mozilla/5.0 Chrome/126.0.0.0";
 
