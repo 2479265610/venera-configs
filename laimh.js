@@ -233,7 +233,7 @@ class LaiManHua extends ComicSource {
       loadNext(next) {},
     },
     {
-      title: "最新更新",
+      title: "来漫画最新",
       type: "multiPageComicList",
       load: async (page) => {
         page = page || 1;
