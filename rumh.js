@@ -164,7 +164,7 @@ class RuManHua extends ComicSource {
   // ===========================================
   explore = [
     {
-      title: "首页推荐",
+      title: "如漫画推荐",
       type: "multiPartPage",
       load: async () => {
         const res = await Network.get(this.baseUrl + "/");
@@ -204,7 +204,7 @@ class RuManHua extends ComicSource {
       },
     },
     {
-      title: "总排行榜",
+      title: "如漫画排行",
       type: "multiPageComicList",
       load: async (page) => {
         const p = page || 1;
@@ -300,7 +300,7 @@ class RuManHua extends ComicSource {
   // 分类
   // ===========================================
   category = {
-    title: "分类",
+    title: "如漫画",
     parts: [{
       name: "类型",
       type: "fixed",
