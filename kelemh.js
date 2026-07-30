@@ -121,7 +121,7 @@ class KeLeMH extends ComicSource {
   // ====== 浏览 ======
   explore = [
     {
-      title: "首页推荐", type: "multiPartPage",
+      title: "可乐推荐", type: "multiPartPage",
       load: async () => {
         var res = await Network.get("https://www.kelemh.com/", { "User-Agent": "Mozilla/5.0 Chrome/126", Referer: "https://www.kelemh.com/", Accept: "text/html", "Accept-Language": "zh-CN" });
         if (res.status !== 200) throw "HTTP " + res.status;
@@ -131,7 +131,7 @@ class KeLeMH extends ComicSource {
       }
     },
     {
-      title: "国漫周榜", type: "multiPageComicList",
+      title: "可乐国漫", type: "multiPageComicList",
       load: async (page) => {
         var p = page || 1;
         var res = await Network.get("https://www.kelemh.com/fenlei/area/guonei" + (p > 1 ? "?page=" + p : ""), { "User-Agent": "Mozilla/5.0 Chrome/126", Referer: "https://www.kelemh.com/", Accept: "text/html", "Accept-Language": "zh-CN" });
@@ -161,7 +161,7 @@ class KeLeMH extends ComicSource {
   // 站点真实分类维度: 地区(area) 与 题材(theme), 均已逐条验证返回过滤后的"漫画检索"页
   // param 统一带维度前缀 (area/xxx 或 theme/xxx), load 据此拼出 /fenlei/<param>
   category = {
-    title: "分类",
+    title: "可乐漫画",
     parts: [
       { name: "地区", type: "fixed", categories: ["国内", "日本", "韩国", "欧美"], itemType: "category", categoryParams: ["area/guonei", "area/riben", "area/hanguo", "area/oumei"] },
       { name: "题材", type: "fixed", categories: ["玄幻", "后宫", "热血", "武侠", "科幻", "恋爱", "耽美", "奇幻", "冒险", "校园", "搞笑"], itemType: "category", categoryParams: ["theme/xuanhuan", "theme/hougong", "theme/rexue", "theme/wuxia", "theme/kehuan", "theme/lianai", "theme/danmei", "theme/qihuan", "theme/maoxian", "theme/xiaoyuan", "theme/gaoxiao"] }
