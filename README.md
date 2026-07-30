@@ -1,7 +1,3 @@
-# venera-configs
-
-Configuration file repository for venera
-
 ## 此为此仓库新增
 自己看列表
 
@@ -14,18 +10,14 @@ Configuration file repository for venera
 可通过 `index2.json` 파일自动添加漫画源，无需手动配置。直接使用以下原始链接导入：
 
 ```
-https://gh-proxy.org/raw.githubusercontent.com/Y-Ymeow/venera-configs/main/merge.json
+1
 ```
 
 **注意事项：**
 
 > 部分漫画源添加了缓存功能以提高加载速度，如果您不需要此功能，可以在应用设置中关闭。请注意，缓存数据不会自动清理，如需清理请手动操作。
 
-- 仓库每天自动同步源仓库，确保源列表保持最新
-- 如访问速度较慢，可使用 [gh-proxy](https://ghproxy.com/) 加速：
-  ```
-  https://gh-proxy.com/https://raw.githubusercontent.com/Y-Ymeow/venera-configs/refs/heads/main/merge.json
-  ```
+
 
 ## 创建新配置
 
@@ -35,7 +27,4 @@ https://gh-proxy.org/raw.githubusercontent.com/Y-Ymeow/venera-configs/main/merge
    - `_template_.js` 文件中包含详细注释以帮助配置
    - `_venera_.js` 用于 IDE 中的代码补全
 
-## 添加新漫画源
-1. 在项目中新建漫画源配置文件（如 `new_source.js`）
-2. 按照现有源文件的格式编写配置
-3. 提交 PR 到本仓库以共享给其他用户
+
