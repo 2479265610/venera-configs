@@ -36,12 +36,6 @@
         "version": "1.0.0"
     },
     {
-        "name": "爱看漫画",
-        "fileName": "aikanmanhua.js",
-        "key": "aikanmanhua",
-        "version": "1.0.0"
-    },
-    {
         "name": "开心漫画",
         "fileName": "kaixinmanhua.js",
         "key": "kaixinmanhua",
