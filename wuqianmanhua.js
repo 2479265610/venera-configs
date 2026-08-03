@@ -15,7 +15,7 @@ class wuqianmanhua extends ComicSource {
   key = "wuqianmanhua";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://comic.mkzcdn.com";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/wuqianmanhua.js";
   baseUrl = "https://comic.mkzcdn.com";
   UA = "Mozilla/5.0 Chrome/126.0.0.0";
 

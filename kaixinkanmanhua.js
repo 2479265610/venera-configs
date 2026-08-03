@@ -12,7 +12,7 @@ class kxmanhua extends ComicSource {
   key = "kxmanhua";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://kxmanhua.com";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/kaixinkanmanhua.js";
   baseUrl = "https://kxmanhua.com";
   UA = "Mozilla/5.0 Chrome/126.0.0.0";
 

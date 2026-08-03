@@ -15,7 +15,7 @@ class kaixinmanhua extends ComicSource {
   key = "kaixinmanhua";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://www.kaixinman.com";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/kaixinmanhua.js";
   baseUrl = "https://www.kaixinman.com";
   UA = "Mozilla/5.0 Chrome/126.0.0.0";
 

@@ -15,7 +15,7 @@ class aman3 extends ComicSource {
   key = "aman3";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://aman3.org";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/aman.js";
   baseUrl = "https://aman3.org";
   UA = "Mozilla/5.0 Chrome/126.0.0.0";
 

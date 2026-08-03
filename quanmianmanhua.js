@@ -15,7 +15,7 @@ class quanmianmanhua extends ComicSource {
   key = "quanmianmanhua";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://www.kaimanhua.com";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/quanmianmanhua.js";
   baseUrl = "https://api-cdn.kaimanhua.com";
   UA = "okhttp/4.9.1";
 

@@ -21,7 +21,7 @@ class dmw2 extends ComicSource {
   key = "dmw2";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://m.dumanwu.org";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/dumanwu2.js";
 
   // ====== 可切换镜像 ======
   static DOMAINS = ["https://m.dumanwu.org", "https://www.dumanwu.org"];
@@ -41,7 +41,7 @@ class dmw2 extends ComicSource {
       var d = this.loadSetting("domain");
       if (d && /^https?:\/\//i.test(d)) return String(d).replace(/\/+$/, "");
     } catch (e) { }
-    return this.url;
+    return "https://m.dumanwu.org";
   }
 
   UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0";

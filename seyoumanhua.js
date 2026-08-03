@@ -11,7 +11,7 @@ class seyoumanhua extends ComicSource {
   key = "seyoumanhua";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://www.seyoumanhua.top";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/seyoumanhua.js";
   baseUrl = "https://www.seyoumanhua.top";
   UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 

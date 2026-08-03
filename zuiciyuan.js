@@ -24,7 +24,7 @@ class zuiciyuan extends ComicSource {
   key = "zuiciyuan";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://www.source-ex.com";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/zuiciyuan.js";
 
   settings = {
     domain: {
@@ -46,7 +46,7 @@ class zuiciyuan extends ComicSource {
       var d = this.loadSetting("domain");
       if (d && /^https?:\/\//i.test(d)) return String(d).replace(/\/+$/, "");
     } catch (e) { }
-    return this.url;
+    return "https://www.source-ex.com";
   }
 
   UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0";
