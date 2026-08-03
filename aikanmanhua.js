@@ -15,7 +15,7 @@ class aikanmanhua extends ComicSource {
   key = "aikanmanhua";
   version = "1.0.0";
   minAppVersion = "1.0.0";
-  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/aikanmanhua.js";
+  url = "https://raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/aikanmanhua.js";
   baseUrl = "https://m.kanman.com";
   UA = "Mozilla/5.0 Chrome/126.0.0.0";
 
