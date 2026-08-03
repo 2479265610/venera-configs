@@ -73,19 +73,19 @@
     },
     {
         "name": "A漫",
-        "fileName": "A漫.js",
+        "fileName": "aman.js",
         "key": "aman3",
         "version": "1.0.0"
     },
     {
         "name": "色友漫画",
-        "fileName": "色友漫画.js",
+        "fileName": "seyoumanhua.js",
         "key": "seyoumanhua",
         "version": "1.0.0"
     },
     {
         "name": "开心看漫画",
-        "fileName": "开心看漫画.js",
+        "fileName": "kaixinkanmanhua.js",
         "key": "kxmanhua",
         "version": "1.0.0"
     }
