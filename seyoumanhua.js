@@ -35,8 +35,13 @@ class seyoumanhua extends ComicSource {
   }
   _abs(href) {
     if (!href) return "";
-    href = href.trim();
-    if (/^https?:\/\//i.test(href)) return href;
+    href = String(href).trim();
+    if (/^https?:\/\//i.test(href)) {
+      // 站内链接（/index.php/...）统一到 baseUrl 域名——列表/章节 href 常为 seyoumanhua.com 绝对地址
+      var p = href.match(/^https?:\/\/[^\/]+(\/index\.php\/[\s\S]*)$/);
+      if (p) return this.baseUrl + p[1];
+      return href;
+    }
     return this.baseUrl + (href.charAt(0) === "/" ? href : "/" + href);
   }
   _fix(u) { return u.replace(/^http:\/\//i, "https://"); }
@@ -150,15 +155,7 @@ class seyoumanhua extends ComicSource {
   // ====== 发现页 ======
   explore = [
     { title: "最近更新", type: "multiPageComicList", load: async (page) => this._loadApi("addtime", "0", "0", "", page || 1) },
-    { title: "人气排行", type: "multiPageComicList", load: async (page) => this._loadApi("hits", "0", "0", "", page || 1) },
-    { title: "评分排行", type: "multiPageComicList", load: async (page) => this._loadApi("score", "0", "0", "", page || 1) },
-    { title: "都市", type: "multiPageComicList", load: async (page) => this._loadCategoryPage("5", page || 1) },
-    { title: "恋爱", type: "multiPageComicList", load: async (page) => this._loadCategoryPage("6", page || 1) },
-    { title: "出版漫画", type: "multiPageComicList", load: async (page) => this._loadCategoryPage("35", page || 1) },
-    { title: "校园", type: "multiPageComicList", load: async (page) => this._loadCategoryPage("8", page || 1) },
-    { title: "3D", type: "multiPageComicList", load: async (page) => this._loadCategoryPage("32", page || 1) },
-    { title: "日漫", type: "multiPageComicList", load: async (page) => this._loadCategoryPage("34", page || 1) },
-    { title: "已完结", type: "multiPageComicList", load: async (page) => this._loadApi("hits", "0", "1", "", page || 1) },
+    { title: "人气排行", type: "multiPageComicList", load: async (page) => this._loadApi("hits", "0", "0", "", page || 1) }
   ];
 
   // ====== 搜索 ======
@@ -175,7 +172,7 @@ class seyoumanhua extends ComicSource {
 
   // ====== 分类 ======
   category = {
-    title: "分类",
+    title: "色友漫画",
     parts: [
       {
         name: "题材", type: "fixed", itemType: "category",
@@ -241,7 +238,7 @@ class seyoumanhua extends ComicSource {
 
       var cover = "";
       var cov = doc.querySelector(".detail-info-cover img, .detail-info-cover, .comic-cover img, img.lazy[data-original]");
-      if (cov) cover = cov.attributes["data-original"] || cov.attributes.src || "";
+      if (cov) cover = cov.attributes["data-original"] || cov.attributes["data-src"] || cov.attributes.src || "";
 
       var author = "";
       var au = doc.querySelector(".detail-info-tip span a");

@@ -76,9 +76,7 @@ class quanmianmanhua extends ComicSource {
 
   explore = [
     { title: "人气榜", type: "multiPageComicList", load: async (page) => this._sortList("", "click", page || 1) },
-    { title: "更新榜", type: "multiPageComicList", load: async (page) => this._sortList("", "date", page || 1) },
-    { title: "评分榜", type: "multiPageComicList", load: async (page) => this._sortList("", "score", page || 1) },
-    { title: "收藏榜", type: "multiPageComicList", load: async (page) => this._sortList("", "shoucang", page || 1) },
+    { title: "更新榜", type: "multiPageComicList", load: async (page) => this._sortList("", "date", page || 1) }
   ];
 
   search = {
@@ -95,7 +93,7 @@ class quanmianmanhua extends ComicSource {
   };
 
   category = {
-    title: "分类",
+    title: "全免漫画",
     parts: [
       {
         name: "题材", type: "fixed", itemType: "category",

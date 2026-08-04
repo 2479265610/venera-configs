@@ -163,16 +163,7 @@ class kaixinmanhua extends ComicSource {
 
   explore = [
     { title: "最近更新", type: "multiPageComicList", load: async (page) => this._updatePage(page || 1) },
-    { title: "全部漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/page", page || 1) },
-    { title: "国内漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/guonei/page", page || 1) },
-    { title: "日本漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/riben/page", page || 1) },
-    { title: "韩国漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/hanguo/page", page || 1) },
-    { title: "欧美漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/oumei/page", page || 1) },
-    { title: "热血", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/rexue/page", page || 1) },
-    { title: "玄幻", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/xuanhuan/page", page || 1) },
-    { title: "都市", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/dushi/page", page || 1) },
-    { title: "冒险", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/maoxian/page", page || 1) },
-    { title: "武侠", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/wuxia/page", page || 1) },
+    { title: "全部漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/page", page || 1) }
   ];
 
   search = {
@@ -187,7 +178,7 @@ class kaixinmanhua extends ComicSource {
   };
 
   category = {
-    title: "分类",
+    title: "开心漫画",
     parts: [
       {
         name: "地区", type: "fixed", itemType: "category",

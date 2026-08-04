@@ -123,17 +123,7 @@ class zuiciyuan extends ComicSource {
 
   explore = [
     { title: "全部漫画", type: "multiPageComicList", load: async (page) => this._lists("9", "全部", "3", page) },
-    { title: "周一更新", type: "multiPageComicList", load: async (page) => this._update(1, page) },
-    { title: "周二更新", type: "multiPageComicList", load: async (page) => this._update(2, page) },
-    { title: "周三更新", type: "multiPageComicList", load: async (page) => this._update(3, page) },
-    { title: "周四更新", type: "multiPageComicList", load: async (page) => this._update(4, page) },
-    { title: "周五更新", type: "multiPageComicList", load: async (page) => this._update(5, page) },
-    { title: "周六更新", type: "multiPageComicList", load: async (page) => this._update(6, page) },
-    { title: "周日更新", type: "multiPageComicList", load: async (page) => this._update(7, page) },
-    { title: "连载中", type: "multiPageComicList", load: async (page) => this._lists("9", "全部", "4", page) },
-    { title: "已完结", type: "multiPageComicList", load: async (page) => this._lists("9", "全部", "1", page) },
-    { title: "韩漫", type: "multiPageComicList", load: async (page) => this._lists("5", "全部", "3", page) },
-    { title: "国漫", type: "multiPageComicList", load: async (page) => this._lists("4", "全部", "3", page) }
+    { title: "周一更新", type: "multiPageComicList", load: async (page) => this._update(1, page) }
   ];
 
   // ====== 搜索 ======
@@ -215,6 +205,8 @@ class zuiciyuan extends ComicSource {
   };
 
   // ====== 详情 ======
+  // 实测（source-ex.com）：详情页以 og meta 提供标题/作者/类型/状态/更新时间/封面，
+  // 主体含 h1.title、.detail-cover .thumb(style 背景图)、#js_comciDesc 简介、.sort 统计、/episode/ 章节链接
   comic = {
     loadInfo: async (id) => {
       var url = this._abs(id);
@@ -223,26 +215,47 @@ class zuiciyuan extends ComicSource {
       var html = res.body;
       var doc = new HtmlDocument(html);
 
+      var og = function (name) {
+        var m = html.match(new RegExp('property="' + name + '"[^>]*content="([^"]*)"', "i"));
+        return m ? m[1].trim() : "";
+      };
       var txt = function (sel) { var e = doc.querySelector(sel); return e ? String(e.text || "").trim() : ""; };
 
-      var author = txt(".author").replace(/[|\\,]/g, "/").replace(/\/+/g, "/").replace(/\sx\s/g, "/").trim();
-      var name = txt(".name");
-      if (author && name.indexOf(author) >= 0) name = name.replace(author, "").trim();
-      if (!name) name = txt(".comics-detail__title") || txt("h1");
+      // 标题：h1.title 优先，og:novel:book_name 兜底
+      var name = txt("h1.title") || og("og:novel:book_name");
+      if (!name) name = txt("h1");
+      var author = og("og:novel:author") || txt(".author");
 
+      // 封面：.detail-cover .thumb 的 style="background: url('...')"，og:image 兜底
       var cover = "";
-      var cov = doc.querySelector(".thumbnail img");
-      if (cov) cover = cov.attributes.src || cov.attributes["data-src"] || cov.attributes["data-original"] || "";
+      var cov = doc.querySelector(".detail-cover .thumb") || doc.querySelector(".detail-cover img");
+      if (cov) {
+        var st = String(cov.attributes.style || cov.attributes["data-bg"] || "");
+        var sm = st.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/i);
+        if (sm) cover = sm[1];
+        if (!cover) cover = cov.attributes["data-original"] || cov.attributes.src || "";
+      }
+      if (!cover) cover = og("og:image");
 
-      var updateTime = txt(".update_time");
-      var typeTxt = txt(".type");
-      var origin = txt(".origin");
-      var count = txt(".count");
-      var collect = txt(".js_collect_num");
+      var updateTime = og("og:novel:update_time").slice(0, 10);
+      if (!updateTime) updateTime = txt(".update_time");
+      var statusTxt = og("og:novel:status");
+      if (!statusTxt) { var sm2 = html.match(/状态[：:]\s*<?[^>]*>?\s*([连载中已完结]{2,3})/); if (sm2) statusTxt = sm2[1]; }
+      var typeTxt = og("og:novel:category") || txt(".type");
+      // 统计：.sort 内"总人气：/状态：/总收藏："
+      var count = "", collect = "";
+      var sm3 = html.match(/总人气[：:]\s*<[^>]*>\s*([\d.]+万?)/);
+      if (sm3) count = sm3[1];
+      var sm4 = html.match(/总收藏[：:]\s*<[^>]*>\s*([\d.]+万?)/);
+      if (sm4) collect = sm4[1];
 
       var desc = "";
-      var d1 = doc.querySelector("#js_desc_content");
-      if (d1) desc = String(d1.text || "").trim();
+      var d1 = doc.querySelector("#js_comciDesc");
+      if (d1) {
+        var dc = d1.querySelector(".desc-content");
+        desc = dc ? String(dc.text || "").trim() : String(d1.text || "").trim();
+      }
+      if (!desc) desc = og("og:description");
       var head = [];
       if (updateTime) head.push("更新时间：" + updateTime);
       if (count) head.push("人气：" + count);
@@ -250,35 +263,30 @@ class zuiciyuan extends ComicSource {
       if (head.length) desc = head.join("　") + "\n\n" + desc;
 
       var tags = {};
-      var tArr = typeTxt.split(/\s+/).filter(function (x) { return x && x.length <= 10; });
+      var tArr = typeTxt.split(/[,\s]+/).filter(function (x) { return x && x.length <= 10; });
       if (tArr.length) tags["题材"] = tArr;
-      if (origin) tags["地区"] = [origin];
 
       var status = "unknown";
-      var sm = html.match(/状态[：:]\s*<?[^>]*>?\s*([连载中已完结]{2,3})/);
-      if (sm) status = /完/.test(sm[1]) ? "completed" : "ongoing";
+      if (statusTxt) status = /完/.test(statusTxt) ? "completed" : "ongoing";
 
-      // 目录：.comic-chapter-item（升序）
+      // 目录：a[href*='/episode/']，文本"第N话"；按话数升序
       var chapters = new Map();
-      var items = doc.querySelectorAll(".comic-chapter-item");
-      for (var i = 0; i < items.length; i++) {
-        var it = items[i];
-        var link = it.querySelector(".comic-chapter-link") || it.querySelector("a");
-        var href = link ? String(link.attributes.href || "") : "";
-        if (!href) continue;
-        var t = String(it.text || (link ? link.text : "") || "").trim();
-        t = t.replace(/(_|\s-\s)/g, " ").replace(/(.*?[话話章回期])\s\d+/, "$1").replace(/\s\s+/g, " ").trim();
-        if (!t) t = "第" + (i + 1) + "话";
-        chapters.set(this._abs(href), t);
+      var epList = [];
+      var as = doc.querySelectorAll("a[href*='/episode/']");
+      for (var j = 0; j < as.length; j++) {
+        var h2 = String(as[j].attributes.href || "");
+        if (!h2) continue;
+        var t2 = String(as[j].text || "").trim();
+        if (!t2) { var tt = as[j].attributes.title || ""; if (tt) t2 = String(tt).trim(); }
+        if (!t2) continue;
+        if (/开始阅读|立即阅读/.test(t2)) continue;
+        var full = this._abs(h2);
+        if (chapters.has(full)) continue;
+        var num = t2.match(/第\s*(\d+(?:\.\d+)?)\s*[话話]/);
+        epList.push([full, t2, num ? parseFloat(num[1]) : 9999]);
       }
-      if (!chapters.size) {
-        var as = doc.querySelectorAll("a[href*='/episode/']");
-        for (var j = 0; j < as.length; j++) {
-          var h2 = String(as[j].attributes.href || "");
-          var t2 = String(as[j].text || "").trim();
-          if (h2 && t2) chapters.set(this._abs(h2), t2);
-        }
-      }
+      epList.sort(function (a, b) { return a[2] - b[2]; });
+      for (var j = 0; j < epList.length; j++) chapters.set(epList[j][0], epList[j][1]);
 
       return new ComicDetails({
         id: url,

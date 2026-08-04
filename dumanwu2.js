@@ -277,12 +277,7 @@ class dmw2 extends ComicSource {
   ];
   explore = [
     { title: "总点击", type: "multiPageComicList", load: async (page) => this._listPage("/custom/top", page) },
-    { title: "月点击", type: "multiPageComicList", load: async (page) => this._listPage("/custom/month", page) },
-    { title: "周点击", type: "multiPageComicList", load: async (page) => this._listPage("/custom/week", page) },
-    { title: "日点击", type: "multiPageComicList", load: async (page) => this._listPage("/custom/day", page) },
-    { title: "最近更新", type: "multiPageComicList", load: async (page) => this._listPage("/custom/update", page) },
-    { title: "精品推荐", type: "multiPageComicList", load: async (page) => this._listPage("/custom/boutique", page) },
-    { title: "编辑推荐", type: "multiPageComicList", load: async (page) => this._listPage("/custom/recom", page) }
+    { title: "月点击", type: "multiPageComicList", load: async (page) => this._listPage("/custom/month", page) }
   ];
 
   // ====== 搜索 ======

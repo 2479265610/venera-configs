@@ -76,12 +76,7 @@ class aman3 extends ComicSource {
 
   explore = [
     { title: "最近更新", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/time/st/all/page/{p}", page) },
-    { title: "人气排行", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/hits/st/all/page/{p}", page) },
-    { title: "全部漫画", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/time/st/all/page/{p}", page) },
-    { title: "韩漫", type: "multiPageComicList", load: async (page) => this._page("/bookcata/%E9%9F%A9%E6%BC%AB/ob/time/st/all/page/{p}", page) },
-    { title: "日漫", type: "multiPageComicList", load: async (page) => this._page("/bookcata/%E6%97%A5%E6%BC%AB/ob/time/st/all/page/{p}", page) },
-    { title: "3D漫画", type: "multiPageComicList", load: async (page) => this._page("/bookcata/3D%E6%BC%AB/ob/time/st/all/page/{p}", page) },
-    { title: "已完结", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/time/st/completed/page/{p}", page) },
+    { title: "人气排行", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/hits/st/all/page/{p}", page) }
   ];
 
   search = {
@@ -96,7 +91,7 @@ class aman3 extends ComicSource {
   };
 
   category = {
-    title: "分类",
+    title: "A漫",
     parts: [
       { name: "类型", type: "fixed", itemType: "category",
         categories: ["全部", "韩漫", "日漫", "3D漫画", "美女", "单本"],
@@ -168,11 +163,35 @@ class aman3 extends ComicSource {
       var res = await Network.get(url, this._headers());
       if (res.status !== 200) throw "HTTP " + res.status;
       var doc = new HtmlDocument(res.body);
-      var imgs = doc.querySelectorAll("img");
+      var html = res.body;
       var images = [];
+      var seen = {};
+
+      // 1) img 懒加载属性（兼容 data-original / data-src / data-lazy-src / data-url / srcset 首项）
+      var imgs = doc.querySelectorAll("img");
       for (var i = 0; i < imgs.length; i++) {
-        var u = imgs[i].attributes["data-original"] || imgs[i].attributes.src || "";
-        if (u && /\.(jpg|jpeg|png|webp|gif)/i.test(u)) images.push(this._fix(this._abs(u)));
+        var a = imgs[i].attributes;
+        var u = String(a["data-original"] || a["data-src"] || a["data-lazy-src"] || a["data-url"] || a["data-echo"] || a["src"] || "").trim();
+        if (!u) { var ss = String(a["data-srcset"] || ""); var ssm = ss.match(/^\s*([^,\s]+)/); if (ssm) u = ssm[1]; }
+        if (!u || u.indexOf("data:") === 0 || u.indexOf("javascript:") === 0) continue;
+        if (seen[u]) continue;
+        seen[u] = 1;
+        images.push(this._fix(this._abs(u)));
+      }
+
+      // 2) 兜底：脚本内嵌图片数组（var xxx = ["url", ...] 或 data_url 变量）
+      if (!images.length) {
+        var dm = html.match(/var\s+data_url\s*=\s*['"]([^'"]+)['"]/);
+        var arrs = html.match(/\[(["']https?:\/\/[^"']+["']\s*,\s*["']https?:\/\/[^"']+["'])\]/);
+        if (dm && arrs) {
+          var prefix = dm[1];
+          var urls = html.match(/["']((?:https?:\/\/|\/)[^"']+\.(?:jpg|jpeg|png|webp|gif)(?:\?[^"']*)?)["']/gi) || [];
+          for (var k = 0; k < urls.length; k++) {
+            var uu = urls[k].replace(/^["']|["']$/g, "");
+            if (/^https?:/.test(uu)) images.push(this._fix(uu));
+            else images.push(this._fix(prefix + uu));
+          }
+        }
       }
       return { images: images };
     },

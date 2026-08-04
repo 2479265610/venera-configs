@@ -1,16 +1,21 @@
 /**
- * 开心看漫画新站 (kxmanhua.com) —— Venera 漫画源 v1.0.0
- * 开心漫 CMS，与 www.kaixinman.com 完全同模板（列表/详情/搜索 HTML 解析 + 阅读页 AES 解密）。
- * 已实测确认：
- *   列表/搜索 DOM： li.col-md-6.col-sm-4.col-xs-3 -> a(/comic/<id>) + .comic-cover.lazy[data-original] + h4 a
- *   详情页 DOM：    h1 span（标题） / .comic-cover img[data-original] / 作者：/简介：/ .chapter-list li a(/chapter/<id>)
- *   阅读页：        var params = '...'  AES-128-CBC 解密 -> {"chapter_images":[...], "images_hosts":[...]}，图片 = hosts[0] + images[i]
- *                  key = "5V&RoR%Jf@pJPydF", iv = "a79bfa9267e56d57951f5bebf9516ee2"
+ * 开心看漫画 (kxmanhua.com) —— Venera 漫画源 v2.1.0
+ * ⚠️ kxmanhua.com 已改版：由 /category/、/comic/、/chapter/ 旧模板
+ *    改为 /manga/<id> 新模板。
+ * 已确认（WebFetch 实测）：
+ *   列表   /manga/library?page=<N>&ranktype=1&count=24   （全部漫画）
+ *          /manga/library?orderby=2&page=<N>             （最近更新）
+ *          /manga/library?orderby=3&page=<N>             （最新上架）
+ *          /manga/library?type=2|3&page=<N>              （韩漫/日漫）
+ *   详情   /manga/<id>   -> 作者：/漫画分类：/最近更新：/标签：/简介
+ *   章节   /manga/<id>/detail/<章节id>   （用户提供样本确认）
+ *   阅读   <img src="https://img.imh99.top/webtoon/content/..."> 直接出图，无需 AES
+ *          （保留旧模板 params AES 解密作为兜底，密钥 5V&RoR%Jf@pJPydF）
  */
 class kxmanhua extends ComicSource {
   name = "开心看漫画";
   key = "kxmanhua";
-  version = "1.0.0";
+  version = "2.1.0";
   minAppVersion = "1.0.0";
   url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/kaixinkanmanhua.js";
   baseUrl = "https://kxmanhua.com";
@@ -28,7 +33,7 @@ class kxmanhua extends ComicSource {
     return o;
   }
 
-  // ====== AES-128-CBC 解密（与 kaixinman 同密钥，已验证）======
+  // ====== AES-128-CBC 解密（开心漫 CMS 同密钥）======
   _aes(cipherB64) {
     function gmul(a, b) { var p = 0; for (var i = 0; i < 8; i++) { if (b & 1) p ^= a; var hi = a & 0x80; a = (a << 1) & 0xff; if (hi) a ^= 0x11b; b >>= 1; } return p & 0xff; }
     function gpow(a, e) { var r = 1; while (e > 0) { if (e & 1) r = gmul(r, a); a = gmul(a, a); e = Math.floor(e / 2); } return r; }
@@ -102,55 +107,50 @@ class kxmanhua extends ComicSource {
   _headers() {
     return { "User-Agent": this.UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8", "Accept-Language": "zh-CN", "Referer": this.baseUrl + "/" };
   }
+  _abs(href) {
+    if (!href) return "";
+    href = String(href).trim();
+    if (/^https?:\/\//i.test(href)) return href;
+    if (href.indexOf("//") === 0) return "https:" + href;
+    return this.baseUrl + (href.charAt(0) === "/" ? href : "/" + href);
+  }
 
-  // 列表卡片解析
+  // ====== 列表卡片解析（新模板 /manga/<id>）======
   _list(doc) {
     var comics = [], seen = {};
-    var cards = doc.querySelectorAll(".col-md-6.col-sm-4.col-xs-3");
+    var cards = doc.querySelectorAll("a[href*='/manga/']");
+    if (!cards.length) cards = doc.querySelectorAll(".manga-item, .comic-item, li");
     for (var k = 0; k < cards.length; k++) {
-      var card = cards[k];
-      var link = card.querySelector("a[href*='/comic/']") || card.querySelector("a");
-      var href = link ? (link.attributes.href || "") : "";
-      if (!href || !/\/comic\//.test(href) || seen[href]) continue;
-      seen[href] = true;
-      var cover = "";
-      var cov = card.querySelector(".comic-cover.lazy, .comic-cover");
-      if (cov) cover = cov.attributes["data-original"] || cov.attributes["data-src"] || cov.attributes.src || "";
-      var title = "";
-      var t = card.querySelector("h4"); if (t) title = t.text.trim();
-      if (!title) title = (link.attributes.title || "").trim();
+      var a = cards[k];
+      var href = a.attributes.href || "";
+      var m = String(href).match(/\/manga\/(\d+)/);
+      if (!m || seen[m[1]]) continue;
+      seen[m[1]] = true;
+      var title = String(a.attributes.title || a.text || "").trim();
       if (!title) continue;
-      comics.push(new Comic({ id: href, title: title, cover: cover }));
+      var cover = "";
+      var img = a.querySelector ? a.querySelector("img") : null;
+      if (img) cover = img.attributes["data-original"] || img.attributes["data-src"] || img.attributes.src || "";
+      comics.push(new Comic({ id: this._abs(href), title: title, cover: this._abs(cover) }));
     }
     return comics;
   }
 
   _maxPage(doc, cur) {
-    var max = cur;
-    var as = doc.querySelectorAll("a[href*='page']");
+    var max = cur || 1;
+    var as = doc.querySelectorAll("a[href*='page=']");
     for (var i = 0; i < as.length; i++) {
       var h = as[i].attributes.href || "";
-      var m = h.match(/page\/(\d+)/);
+      var m = h.match(/page=(\d+)/);
       if (m) { var n = parseInt(m[1]); if (n > max) max = n; }
     }
     return max;
   }
 
-  _listPage(prefix, page) {
+  _listPage(pathTpl, page) {
     return (async () => {
       var p = page || 1;
-      var url = this.baseUrl + prefix + "/" + p;
-      var res = await Network.get(url, this._headers());
-      if (res.status !== 200) throw "HTTP " + res.status;
-      var doc = new HtmlDocument(res.body);
-      return { comics: this._list(doc), maxPage: this._maxPage(doc, p) };
-    })();
-  }
-
-  _updatePage(page) {
-    return (async () => {
-      var p = page || 1;
-      var url = p > 1 ? this.baseUrl + "/update/page/" + p : this.baseUrl + "/update";
+      var url = this.baseUrl + pathTpl.replace("{p}", p);
       var res = await Network.get(url, this._headers());
       if (res.status !== 200) throw "HTTP " + res.status;
       var doc = new HtmlDocument(res.body);
@@ -159,24 +159,40 @@ class kxmanhua extends ComicSource {
   }
 
   explore = [
-    { title: "最近更新", type: "multiPageComicList", load: async (page) => this._updatePage(page || 1) },
-    { title: "全部漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/page", page || 1) },
-    { title: "排行榜", type: "multiPageComicList", load: async (page) => this._listPage("/ranking", page || 1) },
-    { title: "国内漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/guonei/page", page || 1) },
-    { title: "日本漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/riben/page", page || 1) },
-    { title: "韩国漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/hanguo/page", page || 1) },
-    { title: "欧美漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/area/oumei/page", page || 1) },
-    { title: "热血", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/rexue/page", page || 1) },
-    { title: "玄幻", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/xuanhuan/page", page || 1) },
-    { title: "都市", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/dushi/page", page || 1) },
-    { title: "冒险", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/maoxian/page", page || 1) },
-    { title: "武侠", type: "multiPageComicList", load: async (page) => this._listPage("/category/theme/wuxia/page", page || 1) },
+    { title: "最近更新", type: "multiPageComicList", load: async (page) => this._listPage("/manga/library?orderby=2&page={p}", page) },
+    { title: "全部漫画", type: "multiPageComicList", load: async (page) => this._listPage("/manga/library?page={p}&ranktype=1&count=24", page) }
   ];
 
   search = {
     load: async (keyword, opts, page) => {
       var p = page || 1;
-      var url = this.baseUrl + "/search?q=" + encodeURIComponent(keyword) + "&page=" + p;
+      var url = this.baseUrl + "/manga/library?keyword=" + encodeURIComponent(keyword) + "&page=" + p;
+      try {
+        var res = await Network.get(url, this._headers());
+        if (res.status !== 200) return { comics: [], maxPage: 0 };
+        var doc = new HtmlDocument(res.body);
+        return { comics: this._list(doc), maxPage: this._maxPage(doc, p) };
+      } catch (e) { return { comics: [], maxPage: 0 }; }
+    }
+  };
+
+  // ====== 分类（新模板 type=1 国漫 / 2 韩漫 / 3 日漫）======
+  category = {
+    title: "开心看漫画",
+    parts: [
+      {
+        name: "地区", type: "fixed", itemType: "category",
+        categories: ["全部", "国漫", "韩漫", "日漫"],
+        categoryParams: ["", "&type=1", "&type=2", "&type=3"]
+      }
+    ],
+    enableRankingPage: false
+  };
+  categoryComics = {
+    load: async (category, param, options, page) => {
+      var p = page || 1;
+      var t = (param || "").replace(/^&/, "");
+      var url = this.baseUrl + "/manga/library?page=" + p + "&ranktype=1&count=24" + (t ? "&" + t : "");
       var res = await Network.get(url, this._headers());
       if (res.status !== 200) return { comics: [], maxPage: 0 };
       var doc = new HtmlDocument(res.body);
@@ -184,92 +200,117 @@ class kxmanhua extends ComicSource {
     }
   };
 
-  category = {
-    title: "分类",
-    parts: [
-      {
-        name: "地区", type: "fixed", itemType: "category",
-        categories: ["国内", "日本", "韩国", "欧美"],
-        categoryParams: ["/category/area/guonei/page", "/category/area/riben/page", "/category/area/hanguo/page", "/category/area/oumei/page"]
-      },
-      {
-        name: "题材", type: "fixed", itemType: "category",
-        categories: ["全部", "热血", "仙侠", "玄幻", "都市", "冒险", "武侠", "格斗", "科幻", "搞笑", "后宫", "恋爱", "校园", "恐怖", "悬疑", "动作", "同人", "穿越"],
-        categoryParams: ["/category/page", "/category/theme/rexue/page", "/category/theme/xianxia/page", "/category/theme/xuanhuan/page", "/category/theme/dushi/page", "/category/theme/maoxian/page", "/category/theme/wuxia/page", "/category/theme/gedou/page", "/category/theme/kehuan/page", "/category/theme/gaoxiao/page", "/category/theme/hougong/page", "/category/theme/lianai/page", "/category/theme/xiaoyuan/page", "/category/theme/kongbu/page", "/category/theme/xuanyi/page", "/category/theme/dongzuo/page", "/category/theme/tongren/page", "/category/theme/chuanyue/page"]
-      }
-    ],
-    enableRankingPage: false
-  };
-  categoryComics = {
-    load: async (category, param, options, page) => {
-      return await this._listPage(param || "/category/page", page || 1);
-    }
-  };
-
   comic = {
     loadInfo: async (id) => {
-      var res = await Network.get(this.baseUrl + id, this._headers());
+      var url = this._abs(id);
+      var res = await Network.get(url, this._headers());
       if (res.status !== 200) throw "HTTP " + res.status;
-      var doc = new HtmlDocument(res.body);
       var html = res.body;
+      var doc = new HtmlDocument(html);
+      var mid = String(url).match(/\/manga\/(\d+)/);
 
+      // 标题：og:title / <title> / h1
       var title = "";
-      var sp = doc.querySelector("h1 span");
-      if (sp) title = sp.text.trim();
-      if (!title) { var h1 = doc.querySelector("h1"); if (h1) title = h1.text.trim(); }
+      var tm = html.match(/property="og:title"[^>]*content="([^"]+)"/i);
+      if (tm) title = tm[1].trim();
+      if (!title) { var h1 = doc.querySelector("h1"); if (h1) title = (h1.text || "").trim(); }
+      if (!title) { var tt = html.match(/<title>([^<]+)/); if (tt) title = tt[1].replace(/[-_].*(漫画|免费|阅读).*$/, "").trim(); }
 
+      // 封面
       var cover = "";
-      var cov = doc.querySelector(".comic-cover img, img.comic-cover, .lazy[data-original]");
-      if (cov) cover = cov.attributes["data-original"] || cov.attributes.src || "";
+      var cov = doc.querySelector(".detail-cover img, .comic-cover img, .cover img, img.lazy");
+      if (cov) cover = cov.attributes["data-original"] || cov.attributes["data-src"] || cov.attributes.src || "";
+      if (!cover) { var ogi = html.match(/property="og:image"[^>]*content="([^"]+)"/i); if (ogi) cover = ogi[1]; }
 
-      var author = "";
-      var am = html.match(/作者[：:]\s*([^<\n]{2,20})/); if (am) author = am[1].trim();
+      // 作者/最近更新/标签/分类（文本正则，新模板确认结构："作者：xx 别名：xx / 漫画分类：/ 最近更新：/ 标签："）
+      var author = "", updateTime = "", kind = "";
+      var am = html.match(/作者[：:]\s*([^<\n]{2,40})/);
+      if (am) author = am[1].trim();
+      var um = html.match(/最近更新[：:]\s*([\d\-]+)/);
+      if (um) updateTime = um[1].trim();
+      var km = html.match(/标签[：:]\s*([^<\n]{2,80})/);
+      if (km) kind = km[1].trim();
 
       var desc = "";
-      var dm = html.match(/class="desc[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
-      if (!dm) dm = html.match(/class="desc[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-      if (dm) desc = dm[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-      if (!desc) { var dd = doc.querySelector(".comic-detail p.desc"); if (dd) desc = dd.text.trim(); }
+      var dm = html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i);
+      if (dm) desc = dm[1].trim();
+      if (!desc) { var ogd = html.match(/property="og:description"[^>]*content="([^"]+)"/i); if (ogd) desc = ogd[1].trim(); }
 
       var tags = {};
-      var tEls = doc.querySelectorAll("a[href*='/category/theme/']");
-      var tl = [];
-      for (var i = 0; i < tEls.length; i++) { var t = tEls[i].text.trim(); if (t && tl.indexOf(t) < 0) tl.push(t); }
-      if (tl.length) tags["题材"] = tl;
+      if (kind) {
+        var arr = kind.split(/\s+/).filter(function (x) { return x && x.length <= 8; });
+        if (arr.length) tags["标签"] = arr;
+      }
 
       var status = "unknown";
       if (/完结/.test(html)) status = "completed"; else if (/连载/.test(html)) status = "ongoing";
 
+      // 章节：新模板 /manga/<id>/detail/<章节id>
       var chapters = new Map();
-      var chs = doc.querySelectorAll(".chapter-list li a, a[href*='/chapter/']");
+      var seen = {};
+      var chs = doc.querySelectorAll("a[href*='/detail/']");
+      if (!chs.length && mid) chs = doc.querySelectorAll("a[href*='/manga/" + mid[1] + "/']");
+      if (!chs.length) chs = doc.querySelectorAll("a[href*='/read/'], a[href*='/chapter/']");
       for (var c = 0; c < chs.length; c++) {
         var a = chs[c];
-        var h = a.attributes.href || "";
-        if (!h || !/chapter/.test(h)) continue;
-        var t = a.text.trim();
-        if (t) chapters.set(h, t);
+        var h = String(a.attributes.href || "");
+        if (!h || /\/manga\/\d+$/.test(h) || /javascript:/.test(h) || h.indexOf("/detail/") < 0 && h.indexOf("/read/") < 0 && h.indexOf("/chapter/") < 0) continue;
+        var t = String(a.text || "").trim();
+        if (!t || t.length > 40) continue;
+        var full = this._abs(h);
+        if (seen[full]) continue;
+        seen[full] = 1;
+        chapters.set(full, t);
       }
-      return new ComicDetails({ id: id, title: title, cover: cover, author: author, description: desc, tags: tags, status: status, chapters: chapters });
+      if (!chapters.size) {
+        // 兜底：og:novel:latest_chapter_url 等
+        var om = html.match(/property="og:novel:latest_chapter_url"[^>]*content="([^"]+)"/i);
+        if (om) chapters.set(this._abs(om[1]), "最新话");
+      }
+      return new ComicDetails({ id: url, title: title, cover: this._abs(cover), author: author, description: desc, tags: tags, status: status, updateTime: updateTime, chapters: chapters });
     },
 
     loadEp: async (comicId, epId) => {
-      var res = await Network.get(this.baseUrl + epId, this._headers());
+      var res = await Network.get(this._abs(epId), this._headers());
       if (res.status !== 200) throw "HTTP " + res.status;
       var html = res.body;
-      var pm = html.match(/var\s+params\s*=\s*['"]([^'"]{50,})['"]/);
-      if (!pm) return { images: [] };
-      try {
-        var dec = this._aes(pm[1]);
-        var obj = JSON.parse(dec);
-        var host = (obj.images_hosts && obj.images_hosts[0]) || "https://s2.bzcdn.net";
-        var imgs = obj.chapter_images || [];
-        var images = [];
-        for (var i = 0; i < imgs.length; i++) { if (imgs[i]) images.push(host + imgs[i]); }
-        return { images: images };
-      } catch (e) { return { images: [] }; }
+      var doc = new HtmlDocument(html);
+      var images = [];
+      var seen = {};
+
+      // 1) 新模板：img 直接 src（img.imh99.top / webtoon/content）
+      var imgs = doc.querySelectorAll("img[src*='imh99.top'], img[data-original*='imh99.top'], img[src*='/webtoon/content/']");
+      if (!imgs.length) imgs = doc.querySelectorAll("img");
+      for (var i = 0; i < imgs.length; i++) {
+        var u = String(imgs[i].attributes["data-original"] || imgs[i].attributes["data-src"] || imgs[i].attributes.src || "").trim();
+        if (!u || seen[u]) continue;
+        if (!/\.(jpg|jpeg|png|webp|gif|avif)(\?|$)/i.test(u)) continue;
+        // 过滤站内 logo/图标（非内容图）
+        if (/kxmanhua\.com\/(img|static)\//i.test(u)) continue;
+        seen[u] = 1;
+        images.push(this._abs(u));
+      }
+
+      // 2) 兜底：旧模板 params AES（开心漫 CMS 同款）
+      if (!images.length) {
+        var pm = html.match(/var\s+params\s*=\s*['"]([^'"]{50,})['"]/);
+        if (pm) {
+          try {
+            var dec = this._aes(pm[1]);
+            var obj = JSON.parse(dec);
+            var host = (obj.images_hosts && obj.images_hosts[0]) || (obj.host ? "https://" + obj.host : "");
+            var arr = obj.chapter_images || obj.images || [];
+            for (var i = 0; i < arr.length; i++) {
+              if (!arr[i]) continue;
+              images.push(/^https?:/.test(arr[i]) ? arr[i] : (host + arr[i]));
+            }
+          } catch (e) { }
+        }
+      }
+      return { images: images };
     },
 
     onImageLoad: (url) => ({ url: url, headers: { "User-Agent": "Mozilla/5.0 Chrome/126", "Referer": "https://kxmanhua.com/", "Accept": "image/webp,image/*" } }),
-    idMatch: "(\\/comic\\/[A-Za-z0-9]+)"
+    idMatch: "(\\/manga\\/\\d+)"
   };
 }

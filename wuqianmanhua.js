@@ -61,8 +61,7 @@ class wuqianmanhua extends ComicSource {
 
   explore = [
     { title: "热门漫画", type: "multiPageComicList", load: async (page) => this._filter("1", "0", page || 1) },
-    { title: "最新上架", type: "multiPageComicList", load: async (page) => this._filter("2", "0", page || 1) },
-    { title: "编辑推荐", type: "multiPageComicList", load: async (page) => this._filter("3", "0", page || 1) },
+    { title: "最新上架", type: "multiPageComicList", load: async (page) => this._filter("2", "0", page || 1) }
   ];
 
   search = {
@@ -80,7 +79,7 @@ class wuqianmanhua extends ComicSource {
   };
 
   category = {
-    title: "分类",
+    title: "武芊漫画",
     parts: [
       {
         name: "题材", type: "fixed", itemType: "category",

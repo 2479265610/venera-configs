@@ -124,11 +124,7 @@ class yumanhua extends ComicSource {
   // ====== 发现 ======
   explore = [
     { title: "精品榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/1", page) },
-    { title: "人气榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/2", page) },
-    { title: "推荐榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/3", page) },
-    { title: "黑马榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/4", page) },
-    { title: "更新榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/5", page) },
-    { title: "新漫画", type: "multiPageComicList", load: async (page) => this._listPage("/rank/6", page) }
+    { title: "人气榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/2", page) }
   ];
 
   // ====== 搜索 ======
@@ -333,14 +329,35 @@ class yumanhua extends ComicSource {
   }
 
   // ====== 阅读页解密（异或 + base64）======
+  // 注意：阅读页 __c0rst96 现经 eval(Packer 混淆) 动态生成，需先解包再提取
   static KEYS = [
     "c21raHkyNTg=", "c21rZDk1ZnY=", "bWQ0OTY5NTI=", "Y2Rjc2R3cQ==", "dmJmc2EyNTY=",
     "Y2F3ZjE1MWM=", "Y2Q1NmN2ZGE=", "OGtpaG50OQ==", "ZHNvMTV0bG8=", "NWtvNnBsaHk="
   ];
 
+  // Dean Edwards Packer 解码：eval(function(p,a,c,k,e,d){...}('p',a,c,'k'.split('|'),0,{}))
+  _unpackPacker(obf) {
+    var m = String(obf).match(/\}\('([^']+)',(\d+),(\d+),'([^']+)'/);
+    if (!m) return obf;
+    var p = m[1], a = parseInt(m[2], 10), c = parseInt(m[3], 10), k = m[4].split("|");
+    return p.replace(/\b(\w+)\b/g, function (w) {
+      var n = parseInt(w, a);
+      return (n >= 0 && n < k.length) ? k[n] : w;
+    });
+  }
+
   _decryptImages(html) {
     try {
+      // 1) 直接匹配（老结构）：__c0rst96 = '...'
       var m = html.match(/__c0rst96\s*=\s*['"]([^'"]+)['"]/);
+      // 2) 新结构：eval(function(p,a,c,k,e,d){...}('...',...)) 混淆，先解包
+      if (!m) {
+        var ev = html.match(/<script[^>]*>([\s\S]*?function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k[\s\S]*?)<\/script>/i);
+        if (ev) {
+          var dec = this._unpackPacker(ev[1]);
+          m = dec.match(/__c0rst96\s*=\s*['"]([^'"]+)['"]/);
+        }
+      }
       if (!m) return [];
       var idm = html.match(/readerContainer[\s\S]{0,200}?data-id\s*=\s*["'](\d+)["']/i);
       if (!idm) idm = html.match(/data-id\s*=\s*["'](\d+)["'][\s\S]{0,200}?readerContainer/i);
