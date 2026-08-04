@@ -82,29 +82,29 @@ class seyoumanhua extends ComicSource {
   }
 
   // ====== HTML 列表解析（搜索/分类兜底）======
+  // 实测（手机 UA）：分类/搜索均为 .comic_cover_container 卡片，
+  // 封面是 div.comic_cover[data-original]（非 img），标题 .comic_cover_title
   _listHtml(doc) {
     var comics = [], seen = {};
-    var cards = doc.querySelectorAll(".mh-item");
+    var cards = doc.querySelectorAll(".comic_cover_container");
+    if (!cards.length) cards = doc.querySelectorAll(".mh-item");
     if (!cards.length) cards = doc.querySelectorAll(".main-item");
     if (!cards.length) cards = doc.querySelectorAll(".col-md-6.col-sm-4.col-xs-3");
     for (var k = 0; k < cards.length; k++) {
       var card = cards[k];
       var href = "", title = "", cover = "";
-      var h2 = card.querySelector("h2");
       var a = card.querySelector("a[href*='/comic/']") || card.querySelector("a");
-      if (h2) {
-        var ha = h2.querySelector("a");
-        if (ha) { href = ha.attributes.href || ""; if (!title) title = ha.text.trim(); }
-        if (!href) href = h2.attributes.href || "";
-      }
-      if (!href && a) href = a.attributes.href || "";
-      if (!title && a) title = (a.attributes.title || "").trim();
-      if (!title && h2) title = h2.text.trim();
-      var img = card.querySelector("img");
-      if (img) cover = img.attributes["data-original"] || img.attributes.src || "";
+      if (a) href = a.attributes.href || "";
       if (!href || !/comic|manga|book|detail|list/i.test(href)) continue;
       if (seen[href]) continue;
       seen[href] = true;
+      // 封面：div.comic_cover[data-original] 或 img 懒加载
+      var cov = card.querySelector(".comic_cover") || card.querySelector("img");
+      if (cov) cover = cov.attributes["data-original"] || cov.attributes["data-src"] || cov.attributes.src || "";
+      // 标题：.comic_cover_title 优先，a 的 title/text 兜底
+      var tEl = card.querySelector(".comic_cover_title");
+      if (tEl) title = String(tEl.text || "").trim();
+      if (!title && a) title = String(a.attributes.title || a.text || "").trim();
       if (!title) continue;
       comics.push(new Comic({ id: this._abs(this._fix(href)), title: title, cover: this._fix(cover) }));
     }
