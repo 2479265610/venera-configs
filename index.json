@@ -54,33 +54,21 @@
         "version": "1.0.0"
     },
     {
-        "name": "最次元",
-        "fileName": "zuiciyuan.js",
-        "key": "zuiciyuan",
-        "version": "1.0.0"
-    },
-    {
         "name": "读漫屋2",
         "fileName": "dumanwu2.js",
         "key": "dmw2",
         "version": "1.0.0"
     },
     {
-        "name": "A漫",
+        "name": "A漫（梯）",
         "fileName": "aman.js",
         "key": "aman3",
         "version": "1.0.0"
     },
     {
-        "name": "色友漫画",
+        "name": "色友漫画（梯）",
         "fileName": "seyoumanhua.js",
         "key": "seyoumanhua",
-        "version": "1.0.0"
-    },
-    {
-        "name": "开心看漫画",
-        "fileName": "kaixinkanmanhua.js",
-        "key": "kxmanhua",
         "version": "1.0.0"
     }
 ]
