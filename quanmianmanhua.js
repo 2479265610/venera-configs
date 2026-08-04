@@ -65,7 +65,7 @@ class quanmianmanhua extends ComicSource {
   // getsortlist：搜索 / 分类 / 探索共用
   async _sortList(comicSort, orderby, page) {
     var url = this.baseUrl + "/comic-api/v1/comic/getsortlist?status_id=0&comic_sort=" + comicSort + "&human_type=0&orderby=" + orderby + "&pagesize=30&page=" + (page || 1) + "&young_mode=0&" + quanmianmanhua.COMMON;
-    var res = await Network.get(url, { "User-Agent": this.UA, "Accept": "application/json" });
+    var res = await Network.get(url, this._apiHeaders());
     if (res.status !== 200) throw "HTTP " + res.status;
     var j = JSON.parse(res.body);
     var data = j.data || {};
@@ -83,7 +83,7 @@ class quanmianmanhua extends ComicSource {
     load: async (keyword, opts, page) => {
       var p = page || 1;
       var url = this.baseUrl + "/comic-api/v1/comic/getsortlist?search_key=" + encodeURIComponent(keyword) + "&orderby=shoucang&page=" + p + "&pagesize=20&young_mode=0&" + quanmianmanhua.COMMON;
-      var res = await Network.get(url, { "User-Agent": this.UA, "Accept": "application/json" });
+      var res = await Network.get(url, this._apiHeaders());
       if (res.status !== 200) return { comics: [], maxPage: 0 };
       var j = JSON.parse(res.body);
       var list = (j.data && j.data.data) || [];
@@ -109,13 +109,21 @@ class quanmianmanhua extends ComicSource {
     }
   };
 
+  // 通用请求头：禁用压缩（Accept-Encoding: identity），
+  // 规避 Venera 网络层对 gzip 响应解码失败（error decoding response body → body 截断 → SyntaxError）
+  _apiHeaders(extra) {
+    var h = { "User-Agent": this.UA, "Accept": "application/json", "Accept-Encoding": "identity" };
+    if (extra) { for (var k in extra) h[k] = extra[k]; }
+    return h;
+  }
+
   comic = {
     loadInfo: async (id) => {
       var path = "/comic-api/v2/comic/getcomicdata";
       var query = "comic_id=" + id + "&" + quanmianmanhua.COMMON;
       var sign = this._sign(path + query);
       var url = this.baseUrl + path + "?" + query;
-      var res = await Network.get(url, { "User-Agent": this.UA, "m-request-id": sign });
+      var res = await Network.get(url, this._apiHeaders({ "m-request-id": sign }));
       if (res.status !== 200) throw "HTTP " + res.status;
       var obj = JSON.parse(this._decrypt(JSON.parse(res.body).data));
       var cover = (obj.cover_img_34 || obj.cover_img || "").replace(/^http:/, "https:");
@@ -130,17 +138,20 @@ class quanmianmanhua extends ComicSource {
       var chs = obj.chapters || [];
       for (var c = 0; c < chs.length; c++) {
         var ch = chs[c];
-        if (ch.chapter_id) chapters.set(String(ch.chapter_id), ch.chapter_name || ("第" + ch.number + "话"));
+        // 过滤 null/undefined/空 的 chapter_id（否则点章节会请求 chapter_id=null → 422）
+        if (!ch || ch.chapter_id == null || ch.chapter_id === "" || String(ch.chapter_id) === "null") continue;
+        chapters.set(String(ch.chapter_id), ch.chapter_name || ("第" + ch.number + "话"));
       }
       return new ComicDetails({ id: id, title: obj.comic_name || "", cover: cover, author: obj.author_name || "", description: obj.comic_desc || "", tags: tags, status: status, chapters: chapters });
     },
 
     loadEp: async (comicId, epId) => {
+      if (epId == null || String(epId) === "null" || String(epId) === "") return { images: [] };
       var path = "/comic-api/v2/comic/getchapterdata";
       var query = "comic_id=" + comicId + "&chapter_id=" + epId + "&quality=middle&" + quanmianmanhua.COMMON;
       var sign = this._sign(path + query);
       var url = this.baseUrl + path + "?" + query;
-      var res = await Network.get(url, { "User-Agent": this.UA, "access-token": quanmianmanhua.TOKEN, "m-request-id": sign });
+      var res = await Network.get(url, this._apiHeaders({ "access-token": quanmianmanhua.TOKEN, "m-request-id": sign }));
       if (res.status !== 200) throw "HTTP " + res.status;
       var arr = JSON.parse(this._decrypt(JSON.parse(res.body).data));
       var images = [];
