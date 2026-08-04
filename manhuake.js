@@ -336,6 +336,14 @@ class yumanhua extends ComicSource {
   ];
 
   // Dean Edwards Packer 解码：eval(function(p,a,c,k,e,d){...}('p',a,c,'k'.split('|'),0,{}))
+  // 注意：基数为 62 的变体（大写+小写+数字）不能用 parseInt（radix 上限 36），需手写 62 进制解析
+  _parseBase(w, a) {
+    if (a <= 36) { var n = parseInt(w, a); return isNaN(n) ? -1 : n; }
+    var cs = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    var v = 0;
+    for (var i = 0; i < w.length; i++) { var d = cs.indexOf(w.charAt(i)); if (d < 0) return -1; v = v * a + d; }
+    return v;
+  }
   _unpackPacker(obf) {
     var m = String(obf).match(/'([^']+)',\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\(\s*['"]\|['"]\s*\)/);
     if (!m) return obf;
@@ -352,6 +360,7 @@ class yumanhua extends ComicSource {
       // 1) 直接匹配（老结构）：__c0rst96 = '...'
       var m = html.match(/__c0rst96\s*=\s*['"]([^'"]+)['"]/);
       // 2) 新结构：eval(function(p,a,c,k,e,d){...}('...',...)) 混淆，先解包
+      //    限定在含 function(p,a,c,k 的 <script> 内提取，避免整页误匹配
       if (!m) {
         var ev = html.match(/<script[^>]*>([\s\S]*?function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k[\s\S]*?)<\/script>/i);
         if (ev) {
@@ -360,22 +369,31 @@ class yumanhua extends ComicSource {
         }
       }
       if (!m) return [];
-      var idm = html.match(/readerContainer[\s\S]{0,200}?data-id\s*=\s*["'](\d+)["']/i);
-      if (!idm) idm = html.match(/data-id\s*=\s*["'](\d+)["'][\s\S]{0,200}?readerContainer/i);
-      var id = idm ? parseInt(idm[1], 10) : 0;
+      // data-id：readerContainer 附近优先，缺失时遍历所有 KEYS 逐个试解
+      var idm = html.match(/readerContainer[\s\S]{0,300}?data-id\s*=\s*["'](\d+)["']/i);
+      if (!idm) idm = html.match(/data-id\s*=\s*["'](\d+)["'][\s\S]{0,300}?readerContainer/i);
+      var id = idm ? parseInt(idm[1], 10) : -1;
       var KEYS = yumanhua.KEYS;
-      if (!(id >= 0 && id < KEYS.length)) id = 0;
 
-      var key = this._atob(KEYS[id]);
-      var data = this._atob(m[1]);
-      var res = "";
-      for (var i = 0; i < data.length; i++) {
-        res += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-      }
-      var json = this._utf8(this._atob(res));
-      var arr = JSON.parse(json);
       var out = [];
-      for (var k = 0; k < arr.length; k++) if (arr[k]) out.push(this._abs(arr[k]));
+      for (var ki = 0; ki < KEYS.length; ki++) {
+        var tryId = (id >= 0 && id < KEYS.length) ? id : ki;
+        try {
+          var key = this._atob(KEYS[tryId]);
+          var data = this._atob(m[1]);
+          var res = "";
+          for (var i = 0; i < data.length; i++) {
+            res += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+          }
+          var json = this._utf8(this._atob(res));
+          var arr = JSON.parse(json);
+          if (Array.isArray(arr) && arr.length) {
+            for (var k = 0; k < arr.length; k++) if (arr[k]) out.push(this._abs(arr[k]));
+            return out;
+          }
+        } catch (e) { /* 该密钥不对，试下一个 */ }
+        if (id >= 0 && id < KEYS.length) break; // data-id 明确时只试指定密钥
+      }
       return out;
     } catch (e) { return []; }
   }
