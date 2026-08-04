@@ -30,12 +30,6 @@
         "version": "1.0.0"
     },
     {
-        "name": "全免漫画",
-        "fileName": "quanmianmanhua.js",
-        "key": "quanmianmanhua",
-        "version": "1.0.0"
-    },
-    {
         "name": "开心漫画",
         "fileName": "kaixinmanhua.js",
         "key": "kaixinmanhua",
