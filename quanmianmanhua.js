@@ -117,48 +117,83 @@ class quanmianmanhua extends ComicSource {
     return h;
   }
 
+  // 响应完整性检查：JSON 未闭合 / 无 data 视为 CDN 坏响应（概率性截断），触发重试
+  _checkBody(body) {
+    var s = String(body || "");
+    if (s.indexOf('{"data"') !== 0) return false;
+    var t = s.trim();
+    return /["}\]]\s*$/.test(t);
+  }
+
   comic = {
+    // 响应完整性检查：JSON 未闭合 / 无 data 视为 CDN 坏响应（概率性截断），触发重试
+    _checkBody(body) {
+      var s = String(body || "");
+      if (s.indexOf('{"data"') !== 0) return false;
+      var t = s.trim();
+      return /["}\]]\s*$/.test(t);
+    },
+
     loadInfo: async (id) => {
       var path = "/comic-api/v2/comic/getcomicdata";
-      var query = "comic_id=" + id + "&" + quanmianmanhua.COMMON;
-      var sign = this._sign(path + query);
-      var url = this.baseUrl + path + "?" + query;
-      var res = await Network.get(url, this._apiHeaders({ "m-request-id": sign }));
-      if (res.status !== 200) throw "HTTP " + res.status;
-      var obj = JSON.parse(this._decrypt(JSON.parse(res.body).data));
-      var cover = (obj.cover_img_34 || obj.cover_img || "").replace(/^http:/, "https:");
-      var tags = {};
-      var tl = obj.sort_typelist || [];
-      var tlist = [];
-      for (var i = 0; i < tl.length; i++) { var o = tl[i]; for (var k in o) { if (tlist.indexOf(o[k]) < 0) tlist.push(o[k]); } }
-      if (tlist.length) tags["题材"] = tlist;
-      if (obj.avgscore) tags["评分"] = [(obj.avgscore / 10).toFixed(1)];
-      var status = obj.serialize_type === 2 ? "completed" : "ongoing";
-      var chapters = new Map();
-      var chs = obj.chapters || [];
-      for (var c = 0; c < chs.length; c++) {
-        var ch = chs[c];
-        // 过滤 null/undefined/空 的 chapter_id（否则点章节会请求 chapter_id=null → 422）
-        if (!ch || ch.chapter_id == null || ch.chapter_id === "" || String(ch.chapter_id) === "null") continue;
-        chapters.set(String(ch.chapter_id), ch.chapter_name || ("第" + ch.number + "话"));
+      var lastErr = null;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+          var query = "comic_id=" + id + "&" + quanmianmanhua.COMMON;
+          var sign = this._sign(path + query);
+          var url = this.baseUrl + path + "?" + query;
+          var res = await Network.get(url, this._apiHeaders({ "m-request-id": sign }));
+          if (res.status !== 200) throw "HTTP " + res.status;
+          if (!this._checkBody(res.body)) throw "响应不完整，重试";
+          var obj = JSON.parse(this._decrypt(JSON.parse(res.body).data));
+          var cover = (obj.cover_img_34 || obj.cover_img || "").replace(/^http:/, "https:");
+          var tags = {};
+          var tl = obj.sort_typelist || [];
+          var tlist = [];
+          for (var i = 0; i < tl.length; i++) { var o = tl[i]; for (var k in o) { if (tlist.indexOf(o[k]) < 0) tlist.push(o[k]); } }
+          if (tlist.length) tags["题材"] = tlist;
+          if (obj.avgscore) tags["评分"] = [(obj.avgscore / 10).toFixed(1)];
+          var status = obj.serialize_type === 2 ? "completed" : "ongoing";
+          var chapters = new Map();
+          var chs = obj.chapters || [];
+          for (var c = 0; c < chs.length; c++) {
+            var ch = chs[c];
+            // 过滤 null/undefined/空 的 chapter_id（否则点章节会请求 chapter_id=null → 422）
+            if (!ch || ch.chapter_id == null || ch.chapter_id === "" || String(ch.chapter_id) === "null") continue;
+            chapters.set(String(ch.chapter_id), ch.chapter_name || ("第" + ch.number + "话"));
+          }
+          return new ComicDetails({ id: id, title: obj.comic_name || "", cover: cover, author: obj.author_name || "", description: obj.comic_desc || "", tags: tags, status: status, chapters: chapters });
+        } catch (e) {
+          lastErr = e;
+        }
       }
-      return new ComicDetails({ id: id, title: obj.comic_name || "", cover: cover, author: obj.author_name || "", description: obj.comic_desc || "", tags: tags, status: status, chapters: chapters });
+      throw lastErr || "加载失败";
     },
 
     loadEp: async (comicId, epId) => {
       if (epId == null || String(epId) === "null" || String(epId) === "") return { images: [] };
       var path = "/comic-api/v2/comic/getchapterdata";
-      var query = "comic_id=" + comicId + "&chapter_id=" + epId + "&quality=middle&" + quanmianmanhua.COMMON;
-      var sign = this._sign(path + query);
-      var url = this.baseUrl + path + "?" + query;
-      var res = await Network.get(url, this._apiHeaders({ "access-token": quanmianmanhua.TOKEN, "m-request-id": sign }));
-      if (res.status !== 200) throw "HTTP " + res.status;
-      var arr = JSON.parse(this._decrypt(JSON.parse(res.body).data));
-      var images = [];
-      if (Array.isArray(arr)) {
-        for (var i = 0; i < arr.length; i++) { if (arr[i]) images.push(String(arr[i]).replace(/^http:/, "https:")); }
+      var lastErr = null;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+          var query = "comic_id=" + comicId + "&chapter_id=" + epId + "&quality=middle&" + quanmianmanhua.COMMON;
+          var sign = this._sign(path + query);
+          var url = this.baseUrl + path + "?" + query;
+          var res = await Network.get(url, this._apiHeaders({ "access-token": quanmianmanhua.TOKEN, "m-request-id": sign }));
+          if (res.status !== 200) throw "HTTP " + res.status;
+          if (!this._checkBody(res.body)) throw "响应不完整，重试";
+          var arr = JSON.parse(this._decrypt(JSON.parse(res.body).data));
+          var images = [];
+          if (Array.isArray(arr)) {
+            for (var i = 0; i < arr.length; i++) { if (arr[i]) images.push(String(arr[i]).replace(/^http:/, "https:")); }
+          }
+          if (!images.length) throw "空章节";
+          return { images: images };
+        } catch (e) {
+          lastErr = e;
+        }
       }
-      return { images: images };
+      throw lastErr || "加载失败";
     },
 
     onImageLoad: (url) => ({ url: url, headers: { "User-Agent": this.UA, "Referer": "https://www.kaimanhua.com/", "Accept": "image/webp,image/*" } }),
