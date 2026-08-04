@@ -350,12 +350,22 @@ class dumanwu extends ComicSource {
   ];
 
   // Dean Edwards Packer 解码：eval(function(p,a,c,k,e,d){...}('p',a,c,'k'.split('|'),0,{}))
+  // 注意：基数为 62 的变体（大写+小写+数字）不能用 parseInt（radix 上限 36），需手写 62 进制解析
+  _parseBase(w, a) {
+    if (a <= 36) { var n = parseInt(w, a); return isNaN(n) ? -1 : n; }
+    var cs = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    var v = 0;
+    for (var i = 0; i < w.length; i++) { var d = cs.indexOf(w.charAt(i)); if (d < 0) return -1; v = v * a + d; }
+    return v;
+  }
   _unpackPacker(obf) {
-    var m = String(obf).match(/\}\('([^']+)',(\d+),(\d+),'([^']+)'/);
+    // packer 独有特征：'p',a,c,'k'.split('|')
+    var m = String(obf).match(/'([^']+)',\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\(\s*['"]\|['"]\s*\)/);
     if (!m) return obf;
-    var p = m[1], a = parseInt(m[2], 10), c = parseInt(m[3], 10), k = m[4].split("|");
+    var p = m[1], a = parseInt(m[2], 10), k = m[4].split("|");
+    var self = this;
     return p.replace(/\b(\w+)\b/g, function (w) {
-      var n = parseInt(w, a);
+      var n = self._parseBase(w, a);
       return (n >= 0 && n < k.length) ? k[n] : w;
     });
   }

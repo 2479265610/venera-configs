@@ -219,42 +219,32 @@ class zuiciyuan extends ComicSource {
         var m = html.match(new RegExp('property="' + name + '"[^>]*content="([^"]*)"', "i"));
         return m ? m[1].trim() : "";
       };
-      var txt = function (sel) { var e = doc.querySelector(sel); return e ? String(e.text || "").trim() : ""; };
+      var re = function (pat) { var m = html.match(pat); return m ? m[1].trim() : ""; };
 
-      // 标题：h1.title 优先，og:novel:book_name 兜底
-      var name = txt("h1.title") || og("og:novel:book_name");
-      if (!name) name = txt("h1");
-      var author = og("og:novel:author") || txt(".author");
+      // 标题：og:novel:book_name，h1.title 兜底
+      var name = og("og:novel:book_name");
+      if (!name) name = re(/<h1[^>]*class="[^"]*title[^"]*"[^>]*>([^<]+)</i);
+      if (!name) name = re(/<h1[^>]*>([^<]+)</i);
+      var author = og("og:novel:author") || re(/作者[：:]\s*([^<\n]{1,40})/);
 
-      // 封面：.detail-cover .thumb 的 style="background: url('...')"，og:image 兜底
-      var cover = "";
-      var cov = doc.querySelector(".detail-cover .thumb") || doc.querySelector(".detail-cover img");
-      if (cov) {
-        var st = String(cov.attributes.style || cov.attributes["data-bg"] || "");
-        var sm = st.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/i);
-        if (sm) cover = sm[1];
-        if (!cover) cover = cov.attributes["data-original"] || cov.attributes.src || "";
-      }
-      if (!cover) cover = og("og:image");
+      // 封面：og:image；或 .detail-cover .thumb 的 style="background: url('...')"
+      var cover = og("og:image");
+      if (!cover) cover = re(/<img[^>]*class="[^"]*thumb[^"]*"[^>]*style="[^"]*url\(\s*['"]?([^'")]+)['"]?\s*\)/i);
+      if (!cover) cover = re(/<img[^>]*class="[^"]*(?:thumb|cover)[^"]*"[^>]*(?:src|data-original)="([^"]+)"/i);
 
       var updateTime = og("og:novel:update_time").slice(0, 10);
-      if (!updateTime) updateTime = txt(".update_time");
+      if (!updateTime) updateTime = re(/update_time[^>]*content="([^"]+)/i).slice(0, 10);
       var statusTxt = og("og:novel:status");
       if (!statusTxt) { var sm2 = html.match(/状态[：:]\s*<?[^>]*>?\s*([连载中已完结]{2,3})/); if (sm2) statusTxt = sm2[1]; }
-      var typeTxt = og("og:novel:category") || txt(".type");
+      var typeTxt = og("og:novel:category") || re(/<p[^>]*class="[^"]*type[^"]*"[^>]*>([^<]{1,40})</i);
       // 统计：.sort 内"总人气：/状态：/总收藏："
-      var count = "", collect = "";
-      var sm3 = html.match(/总人气[：:]\s*<[^>]*>\s*([\d.]+万?)/);
-      if (sm3) count = sm3[1];
-      var sm4 = html.match(/总收藏[：:]\s*<[^>]*>\s*([\d.]+万?)/);
-      if (sm4) collect = sm4[1];
+      var count = re(/总人气[：:]\s*<[^>]*>\s*([\d.]+万?)/);
+      var collect = re(/总收藏[：:]\s*<[^>]*>\s*([\d.]+万?)/);
 
+      // 简介：id="js_comciDesc" 的 .desc-content，og:description 兜底
       var desc = "";
-      var d1 = doc.querySelector("#js_comciDesc");
-      if (d1) {
-        var dc = d1.querySelector(".desc-content");
-        desc = dc ? String(dc.text || "").trim() : String(d1.text || "").trim();
-      }
+      var dm1 = html.match(/id="js_comciDesc"[\s\S]{0,600}?class="desc-content">([\s\S]*?)<\/span>/i);
+      if (dm1) desc = dm1[1].replace(/<[^>]+>/g, "").trim();
       if (!desc) desc = og("og:description");
       var head = [];
       if (updateTime) head.push("更新时间：" + updateTime);
@@ -269,19 +259,20 @@ class zuiciyuan extends ComicSource {
       var status = "unknown";
       if (statusTxt) status = /完/.test(statusTxt) ? "completed" : "ongoing";
 
-      // 目录：a[href*='/episode/']，文本"第N话"；按话数升序
+      // 目录：a[href*='/episode/']，文本"第N话"；按话数升序（纯正则）
       var chapters = new Map();
       var epList = [];
-      var as = doc.querySelectorAll("a[href*='/episode/']");
-      for (var j = 0; j < as.length; j++) {
-        var h2 = String(as[j].attributes.href || "");
-        if (!h2) continue;
-        var t2 = String(as[j].text || "").trim();
-        if (!t2) { var tt = as[j].attributes.title || ""; if (tt) t2 = String(tt).trim(); }
+      var seenEp = {};
+      var epRe = /<a[^>]+href="(\/episode\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+      var em;
+      while ((em = epRe.exec(html)) !== null) {
+        var h2 = em[1];
+        var t2 = em[2].replace(/<[^>]+>/g, "").trim();
         if (!t2) continue;
         if (/开始阅读|立即阅读/.test(t2)) continue;
         var full = this._abs(h2);
-        if (chapters.has(full)) continue;
+        if (seenEp[full]) continue;
+        seenEp[full] = 1;
         var num = t2.match(/第\s*(\d+(?:\.\d+)?)\s*[话話]/);
         epList.push([full, t2, num ? parseFloat(num[1]) : 9999]);
       }

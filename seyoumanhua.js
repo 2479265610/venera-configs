@@ -280,13 +280,19 @@ class seyoumanhua extends ComicSource {
       if (res.status !== 200) throw "HTTP " + res.status;
       var doc = new HtmlDocument(res.body);
       var imgs = doc.querySelectorAll(".main-container .main-item img, .main-item img, .chapter-img img, .content img");
+      if (!imgs.length) imgs = doc.querySelectorAll("img");
       var images = [];
+      var seenImg = {};
       for (var i = 0; i < imgs.length; i++) {
-        var u = imgs[i].attributes["data-original"] || imgs[i].attributes.src || "";
+        var u = imgs[i].attributes["data-original"] || imgs[i].attributes["data-src"] || imgs[i].attributes.src || "";
+        u = String(u).trim();
         if (!u) continue;
         if (!/\.(jpg|jpeg|png|gif|webp|avif)(\?|$)/i.test(u)) continue;
-        u = this._fix(u);
-        if (images.indexOf(u) < 0) images.push(u);
+        if (/seyoumanhua\.(top|com)\/(img|static)\//i.test(u)) continue; // 站内 logo
+        u = this._abs(this._fix(u)); // 关键：相对路径补全，否则 App 下载报 Invalid argument
+        if (seenImg[u]) continue;
+        seenImg[u] = 1;
+        images.push(u);
       }
       return { images: images };
     },

@@ -337,11 +337,12 @@ class yumanhua extends ComicSource {
 
   // Dean Edwards Packer 解码：eval(function(p,a,c,k,e,d){...}('p',a,c,'k'.split('|'),0,{}))
   _unpackPacker(obf) {
-    var m = String(obf).match(/\}\('([^']+)',(\d+),(\d+),'([^']+)'/);
+    var m = String(obf).match(/'([^']+)',\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\(\s*['"]\|['"]\s*\)/);
     if (!m) return obf;
-    var p = m[1], a = parseInt(m[2], 10), c = parseInt(m[3], 10), k = m[4].split("|");
+    var p = m[1], a = parseInt(m[2], 10), k = m[4].split("|");
+    var self = this;
     return p.replace(/\b(\w+)\b/g, function (w) {
-      var n = parseInt(w, a);
+      var n = self._parseBase(w, a);
       return (n >= 0 && n < k.length) ? k[n] : w;
     });
   }

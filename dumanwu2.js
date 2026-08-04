@@ -281,16 +281,24 @@ class dmw2 extends ComicSource {
   ];
 
   // ====== 搜索 ======
+  // 注意：/search/<kw> 接口已失效（恒返回"没有内容"），改用 /custom/search?key=
   search = {
     load: async (keyword, options, page) => {
       var p = page || 1;
-      var url = this.baseUrl + "/search/" + encodeURIComponent(keyword) + "/" + p;
-      try {
-        var res = await Network.get(url, this._headers());
-        if (res.status !== 200) return { comics: [], maxPage: 1 };
-        var doc = new HtmlDocument(res.body);
-        return { comics: this._list(doc), maxPage: this._maxPage(doc, p) };
-      } catch (e) { return { comics: [], maxPage: 1 }; }
+      var attempts = [
+        this.baseUrl + "/custom/search?key=" + encodeURIComponent(keyword),
+        this.baseUrl + "/search/" + encodeURIComponent(keyword) + "/" + p
+      ];
+      for (var a = 0; a < attempts.length; a++) {
+        try {
+          var res = await Network.get(attempts[a], this._headers());
+          if (res.status !== 200) continue;
+          var doc = new HtmlDocument(res.body);
+          var comics = this._list(doc);
+          if (comics.length) return { comics: comics, maxPage: this._maxPage(doc, p) };
+        } catch (e) { }
+      }
+      return { comics: [], maxPage: 1 };
     }
   };
 

@@ -116,21 +116,31 @@ class kxmanhua extends ComicSource {
   }
 
   // ====== 列表卡片解析（新模板 /manga/<id>）======
+  // 卡片容器 li 内：a(/manga/<id>) + img 封面（懒加载 data-src 或 style 背景）
   _list(doc) {
     var comics = [], seen = {};
-    var cards = doc.querySelectorAll("a[href*='/manga/']");
-    if (!cards.length) cards = doc.querySelectorAll(".manga-item, .comic-item, li");
+    var cards = doc.querySelectorAll("li");
+    if (!cards.length) cards = doc.querySelectorAll("a[href*='/manga/']");
     for (var k = 0; k < cards.length; k++) {
-      var a = cards[k];
-      var href = a.attributes.href || "";
+      var card = cards[k];
+      var href = "", title = "";
+      var a = null;
+      if (card.querySelector) a = card.querySelector("a[href*='/manga/']") || (card.tagName === "A" ? card : card.querySelector("a"));
+      else a = card;
+      if (!a) continue;
+      href = a.attributes.href || "";
       var m = String(href).match(/\/manga\/(\d+)/);
       if (!m || seen[m[1]]) continue;
       seen[m[1]] = true;
-      var title = String(a.attributes.title || a.text || "").trim();
+      title = String(a.attributes.title || a.text || "").trim();
       if (!title) continue;
       var cover = "";
-      var img = a.querySelector ? a.querySelector("img") : null;
+      var img = card.querySelector ? card.querySelector("img") : null;
       if (img) cover = img.attributes["data-original"] || img.attributes["data-src"] || img.attributes.src || "";
+      if (!cover && card.querySelector) {
+        var bEl = card.querySelector("[style*='url(']");
+        if (bEl) { var sm = String(bEl.attributes.style || "").match(/url\(\s*['"]?(https?:\/\/[^'")]+)/i); if (sm) cover = sm[1]; }
+      }
       comics.push(new Comic({ id: this._abs(href), title: title, cover: this._abs(cover) }));
     }
     return comics;
@@ -216,11 +226,22 @@ class kxmanhua extends ComicSource {
       if (!title) { var h1 = doc.querySelector("h1"); if (h1) title = (h1.text || "").trim(); }
       if (!title) { var tt = html.match(/<title>([^<]+)/); if (tt) title = tt[1].replace(/[-_].*(漫画|免费|阅读).*$/, "").trim(); }
 
-      // 封面
+      // 封面：og:image / img.imh99.top / style 背景 / 选择器，多路兜底
       var cover = "";
-      var cov = doc.querySelector(".detail-cover img, .comic-cover img, .cover img, img.lazy");
-      if (cov) cover = cov.attributes["data-original"] || cov.attributes["data-src"] || cov.attributes.src || "";
-      if (!cover) { var ogi = html.match(/property="og:image"[^>]*content="([^"]+)"/i); if (ogi) cover = ogi[1]; }
+      var ogi = html.match(/property="og:image"[^>]*content="([^"]+)"/i);
+      if (ogi) cover = ogi[1];
+      if (!cover) {
+        var im = html.match(/<img[^>]+src="(https?:\/\/img\.imh99\.top\/[^"]+)"/i) || html.match(/<img[^>]+data-src="(https?:\/\/img\.imh99\.top\/[^"]+)"/i);
+        if (im) cover = im[1];
+      }
+      if (!cover) {
+        var bm = html.match(/background(?:-image)?\s*:\s*url\(\s*['"]?(https?:\/\/img\.imh99\.top\/[^'")]+)/i);
+        if (bm) cover = bm[1];
+      }
+      if (!cover) {
+        var cov = doc.querySelector(".detail-cover img, .comic-cover img, .cover img, img.lazy");
+        if (cov) cover = cov.attributes["data-original"] || cov.attributes["data-src"] || cov.attributes.src || "";
+      }
 
       // 作者/最近更新/标签/分类（文本正则，新模板确认结构："作者：xx 别名：xx / 漫画分类：/ 最近更新：/ 标签："）
       var author = "", updateTime = "", kind = "";
