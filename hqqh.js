@@ -70,11 +70,19 @@ class hqqh extends ComicSource {
 
   _maxPage(doc, cur) {
     var max = cur || 1;
+    // 标准分页链接 a[href*='page=']
     var as = doc.querySelectorAll("a[href*='page=']");
     for (var i = 0; i < as.length; i++) {
       var h = as[i].attributes.href || "";
       var m = h.match(/page=(\d+)/);
       if (m) max = Math.max(max, parseInt(m[1]));
+    }
+    // 兜底：存在"下一页"链接但无page=N → 至少2页
+    if (max === 1) {
+      for (var i = 0; i < as.length; i++) {
+        var t = as[i].text || "";
+        if (/下一|more|›|»/.test(t)) { max = cur + 1; break; }
+      }
     }
     return max;
   }
@@ -214,8 +222,8 @@ class hqqh extends ComicSource {
         desc = "人气：" + hot + (desc ? "\n\n" + desc : "");
       }
 
-      // 章节: a[href*='/qqmhchapter/']  页面最新在前，需反转
-      var chArr = [];
+      // 章节: 页面混合排列，过滤"开始阅读"按钮，不去反转（保页面原序）
+      var chapters = new Map();
       var seenCh = {};
       var chs = doc.querySelectorAll("a[href*='/qqmhchapter/']");
       for (var c = 0; c < chs.length; c++) {
@@ -223,14 +231,11 @@ class hqqh extends ComicSource {
         var h = ca.attributes.href || "";
         var m = h.match(/\/qqmhchapter\/(\d+)\.html/);
         if (!m || seenCh[m[1]]) continue;
-        seenCh[m[1]] = true;
         var ct = String(ca.text || "").trim();
-        if (!ct) ct = "第" + (c + 1) + "话";
-        chArr.push([this._abs(h), ct]);
-      }
-      var chapters = new Map();
-      for (var i = chArr.length - 1; i >= 0; i--) {
-        chapters.set(chArr[i][0], chArr[i][1]);
+        // 过滤开始阅读/立即阅读等按钮（非真实章节）
+        if (!ct || /开始阅读|立即阅读|阅读$/.test(ct)) continue;
+        seenCh[m[1]] = true;
+        chapters.set(this._abs(h), ct);
       }
 
       return new ComicDetails({
