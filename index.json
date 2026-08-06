@@ -64,5 +64,17 @@
         "fileName": "seyoumanhua.js",
         "key": "seyoumanhua",
         "version": "1.0.0"
+    },       
+    {
+        "name": "七七漫画",
+        "fileName": "hqqh.js",
+        "key": "hqqh",
+        "version": "1.0.0"
+    },
+    {
+        "name": "DogeManga",
+        "fileName": "dogemanga.js",
+        "key": "dogemanga",
+        "version": "1.0.0"
     }
 ]
