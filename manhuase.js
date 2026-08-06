@@ -8,7 +8,7 @@ class ManHuaShe extends ComicSource {
   key = "mamhuase";
   version = "2.0.0";
   minAppVersion = "1.0.0";
-  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/manhuase.js";
+  url = "";
 
   baseUrl = "https://www.311s.com";
   UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
@@ -208,10 +208,9 @@ class ManHuaShe extends ComicSource {
         if (txt && txt.length < 10) tags.push(txt);
       }
 
-      // 章节 (详情页直接列出全部，页面默认最新在前)
-      // 用数组收集再反转，避免依赖 Map 的迭代器 API（Venera 可能不支持 entries/clear）
+      // 章节 (详情页直接列出全部，实测页面已按最早→最新升序排列，无需反转)
+      var chapters = new Map();
       var chapterEls = doc.querySelectorAll("a[href*='/chapter_']");
-      var chArr = [];
       for (var i = 0; i < chapterEls.length; i++) {
         var a = chapterEls[i];
         var chref = a.attributes["href"];
@@ -219,12 +218,7 @@ class ManHuaShe extends ComicSource {
         var m = chref.match(/\/chapter_\d+_\d+\.html/);
         if (!m) continue;
         var ct = a.text.trim();
-        if (ct) chArr.push([m[0], ct]);
-      }
-      var chapters = new Map();
-      // 反转: 最新在前 → 最早在前（升序）
-      for (var i = chArr.length - 1; i >= 0; i--) {
-        chapters.set(chArr[i][0], chArr[i][1]);
+        if (ct) chapters.set(m[0], ct);
       }
 
       return new ComicDetails({

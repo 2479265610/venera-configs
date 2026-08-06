@@ -1,24 +1,24 @@
 /**
- * DogeManga (dogemanga.com) —— Venera 漫画源 v1.0.0
+ * DogeManga (dogemanga.com) —— Venera 漫画源 v1.1.0
  * ===============================================================
- * SSR（服务端渲染）站点，数据内联在 HTML 中（data-* 属性 + og meta），无需 API。
+ * SSR 站点，所有数据在 HTML 中（data-* 属性 + og meta），无需 API 无需 JS。
+ * 纯正则解析：不依赖 HtmlDocument querySelector（规避 Venera 兼容性差异）。
  *
- * 已从 HAR 实测确认:
- *   首页    /                         → .site-card[data-manga-id] + img.card-img-top + h5 a
- *   详情    /m/<slug>                 → og meta + data-page-url 章节列表
+ * 已从 HAR + 真实抓取确认:
+ *   首页    /                         → .site-card[data-manga-id] 卡片
+ *   详情    /m/<slug>                 → og meta + data-page-url 章节
  *           封面 /images/manga-thumbnails/<slug>.jpg
- *   阅读    /p/<pageId>               → data-page-image-url 直接出图
- *           图片 /images/pages/<pageId>.jpg
- *   搜索    /?q=<keyword>
+ *   阅读    /p/<pageId>               → data-page-image-url 图片直出
+ *   搜索    /?q=<keyword>             → 同首页卡片
  */
 class dogemanga extends ComicSource {
   name = "DogeManga";
   key = "dogemanga";
-  version = "1.0.0";
+  version = "1.1.0";
   minAppVersion = "1.0.0";
   url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/dogemanga.js";
   baseUrl = "https://dogemanga.com";
-  UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36";
+  UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/127.0.0.0 Safari/537.36";
 
   _headers() {
     return {
@@ -37,32 +37,35 @@ class dogemanga extends ComicSource {
     return this.baseUrl + (href.charAt(0) === "/" ? href : "/" + href);
   }
 
-  // ====== 列表卡片（首页 SSR / .site-card）======
-  _list(doc) {
+  // ====== 列表解析（纯正则，逐卡片分块） ======
+  _list(html) {
     var comics = [], seen = {};
-    var cards = doc.querySelectorAll(".site-card");
-    for (var k = 0; k < cards.length; k++) {
-      var card = cards[k];
-      var a = card.querySelector("a[href*='/m/']");
-      if (!a) continue;
-      var href = a.attributes.href || "";
-      var m = href.match(/\/m\/([A-Za-z0-9_-]+)/);
-      if (!m || seen[m[1]]) continue;
-      seen[m[1]] = true;
+    // 按 data-manga-id 切分卡片，逐块解析（避免跨卡片贪婪匹配）
+    var parts = html.split("data-manga-id=\"");
+    for (var k = 1; k < parts.length; k++) {
+      var chunk = parts[k];
+      // 提取 manga-id（引号前部分）
+      var sid = chunk.match(/^([^\"]+)/);
+      if (!sid || seen[sid[1]]) continue;
+      seen[sid[1]] = true;
+      // 提取漫画链接
+      var hm = chunk.match(/href="(https?:\/\/dogemanga\.com\/m\/[^"]+)"/i);
+      if (!hm) continue;
+      // 提取封面图 src
+      var cm = chunk.match(/<img[^>]+src="(https?:\/\/dogemanga\.com\/images\/manga-thumbnails\/[^"]+\.jpg)"/i);
+      var cover = cm ? cm[1] : (this.baseUrl + "/images/manga-thumbnails/" + sid[1] + ".jpg");
+      // 提取标题（img alt 或 card-title 链接文本）
       var title = "";
-      var tEl = card.querySelector("h5 a, .card-title a");
-      if (tEl) title = String(tEl.text || "").trim();
-      if (!title) title = String(a.attributes.title || a.text || "").trim();
-      if (!title) { var img = card.querySelector("img"); if (img) title = String(img.attributes.alt || "").trim(); }
-      if (!title) continue;
-      var cover = "";
-      var img = card.querySelector("img.card-img-top");
-      if (img) cover = img.attributes.src || "";
-      if (!cover) {
-        var slug = m[1];
-        cover = this.baseUrl + "/images/manga-thumbnails/" + slug + ".jpg";
+      var am = chunk.match(/<img[^>]+alt="([^"]+)"/i);
+      if (am && am[1] && !/logo/i.test(am[1])) title = am[1];
+      if (!title) {
+        var tm = chunk.match(/card-title[^>]*>\s*<a[^>]*>([^<]+)</i);
+        if (tm) title = tm[1].trim();
       }
-      comics.push(new Comic({ id: this._abs(href), title: title, cover: this._fix(cover) }));
+      if (!title) title = sid[1];
+      // 排除无图卡片（空 card 容器，如首个 site-card--uninitialized）
+      if (!cm && chunk.indexOf("<div class=\"card\"></div>") >= 0) continue;
+      comics.push(new Comic({ id: this._abs(hm[1]), title: title, cover: this._fix(cover) }));
     }
     return comics;
   }
@@ -71,14 +74,12 @@ class dogemanga extends ComicSource {
     { title: "热门排行", type: "multiPartPage", load: async () => {
         var res = await Network.get(this.baseUrl + "/", this._headers());
         if (res.status !== 200) throw "HTTP " + res.status;
-        var doc = new HtmlDocument(res.body);
-        return [{ title: "热门排行", comics: this._list(doc), viewMore: null }];
+        return [{ title: "热门排行", comics: this._list(res.body), viewMore: null }];
     }},
     { title: "最近更新", type: "multiPartPage", load: async () => {
         var res = await Network.get(this.baseUrl + "/?sort=updated", this._headers());
         if (res.status !== 200) throw "HTTP " + res.status;
-        var doc = new HtmlDocument(res.body);
-        return [{ title: "最近更新", comics: this._list(doc), viewMore: null }];
+        return [{ title: "最近更新", comics: this._list(res.body), viewMore: null }];
     }}
   ];
 
@@ -89,17 +90,16 @@ class dogemanga extends ComicSource {
       try {
         var res = await Network.get(url, this._headers());
         if (res.status !== 200) return { comics: [], maxPage: 0 };
-        var doc = new HtmlDocument(res.body);
-        return { comics: this._list(doc), maxPage: 1 };
+        return { comics: this._list(res.body), maxPage: 1 };
       } catch (e) { return { comics: [], maxPage: 0 }; }
     }
   };
 
-  // ====== 分类（暂无）======
+  // ====== 分类（站点无传统分类体系） ======
   category = { title: "DogeManga", parts: [], enableRankingPage: false };
   categoryComics = { load: async () => ({ comics: [], maxPage: 0 }) };
 
-  // ====== 漫画详情 ======
+  // ====== 漫画详情（纯正则） ======
   comic = {
     loadInfo: async (id) => {
       var url = this._abs(id);
@@ -107,28 +107,30 @@ class dogemanga extends ComicSource {
       if (res.status !== 200) throw "HTTP " + res.status;
       var html = res.body;
 
-      // 标题: og:title / <title>
+      // 标题: og:title 或 <title>
       var title = "";
-      var om = html.match(/<title>([^<]+)/);
-      if (om) title = om[1].replace(/\s*[-–—|].*$/, "").trim();
+      var tm = html.match(/<title>([^<]+)/);
+      if (tm) title = tm[1].replace(/\s*[-–—|]\s*(DogeManga|dogemanga).*$/i, "").trim();
       if (!title) {
         var ogt = html.match(/property="og:title"[^>]*content="([^"]+)"/i);
-        if (ogt) title = ogt[1].replace(/\s*[-–—|].*$/, "").trim();
+        if (ogt) title = ogt[1].trim();
       }
 
-      // 封面: /images/manga-thumbnails/<slug>.jpg
-      var slug = String(id).match(/\/m\/([A-Za-z0-9_-]+)/);
+      // 封面: og:image（排除 logo）
       var cover = "";
-      var ogi = html.match(/property="og:image"[^>]*content="([^"]+)"/i);
-      if (ogi && !/logo/.test(ogi[1])) cover = ogi[1];
-      if (!cover && slug) cover = this.baseUrl + "/images/manga-thumbnails/" + slug[1] + ".jpg";
+      var ogi = html.match(/property="og:image"[^>]*content="(https?:\/\/dogemanga\.com\/images\/[^"]+\.jpg)"/i);
+      if (ogi && !/logo/i.test(ogi[1])) cover = ogi[1];
+      if (!cover) {
+        var slug = String(id).match(/\/m\/([A-Za-z0-9_-]+)/);
+        if (slug) cover = this.baseUrl + "/images/manga-thumbnails/" + slug[1] + ".jpg";
+      }
 
-      // 作者: 正则
+      // 作者
       var author = "";
       var am = html.match(/作者[：:]\s*([^<\n]{1,40})/);
       if (am) author = am[1].trim().replace(/<[^>]+>/g, "");
 
-      // 状态: 正则
+      // 状态
       var status = "unknown";
       if (/連載中|连载中/.test(html)) status = "ongoing";
       else if (/已完結|已完结|完結/.test(html)) status = "completed";
@@ -138,39 +140,44 @@ class dogemanga extends ComicSource {
       var ogd = html.match(/property="og:description"[^>]*content="([^"]+)"/i);
       if (ogd) desc = ogd[1].trim();
 
-      // 章节: data-page-url="/p/<pageId>"（页面最新在前，需反转）
-      var chArr = [];
-      var seenCh = {};
-      var re = /data-page-url="(\/p\/([A-Za-z0-9_-]+))"/gi;
-      var m;
-      while ((m = re.exec(html)) !== null) {
-        var pid = m[2];
-        if (!pid || seenCh[pid]) continue;
-        seenCh[pid] = true;
-        // 尝试从后续文本获取章节名（data-page-url 附近的链接文本）
-        var ct = "第" + (chArr.length + 1) + "页";
-        chArr.push([this._abs(m[1]), ct]);
+      // 标签
+      var tags = {};
+      var tagList = [];
+      var tagM = [...html.matchAll(/<a[^>]+href="[^"]*\?tags=\d+"[^>]*>([^<]+)<\/a>/gi)];
+      for (var t = 0; t < tagM.length; t++) {
+        var tn = tagM[t][1].trim();
+        if (tn && tn.length <= 10) tagList.push(tn);
       }
-      // 标题从 body 文本中匹配（data-page-url 附近通常有链接）
-      var linkRe = /<a[^>]+href="\/p\/([A-Za-z0-9_-]+)"[^>]*>([^<]+)<\/a>/gi;
-      var nameMap = {};
-      var lm;
-      while ((lm = linkRe.exec(html)) !== null) {
-        nameMap[lm[1]] = lm[2].trim();
-      }
-      for (var i = 0; i < chArr.length; i++) {
-        var pid2 = chArr[i][0].match(/\/p\/([A-Za-z0-9_-]+)/);
-        if (pid2 && nameMap[pid2[1]]) chArr[i][1] = nameMap[pid2[1]];
-      }
-      // 反转：最新在前 → 最早在前
+      if (tagList.length) tags["标签"] = tagList;
+
+      // 章节: data-page-url="/p/<pageId>" + 对应链接文本
       var chapters = new Map();
+      // 先匹配所有 /p/ 链接文本
+      var linkMap = {};
+      var linkM = html.match(/<a[^>]+href="(\/p\/([A-Za-z0-9_-]+))"[^>]*>([^<]+)<\/a>/gi);
+      var lm;
+      while ((lm = /<a[^>]+href="(\/p\/([A-Za-z0-9_-]+))"[^>]*>([^<]+)<\/a>/gi.exec(html)) !== null) {
+        var pid = lm[2], chName = lm[3].trim();
+        if (pid && !linkMap[pid]) linkMap[pid] = chName;
+      }
+      // 再提取 data-page-url 的章节 ID（页面最新在前，但整体顺序已正确）
+      var dpM = html.match(/data-page-url="(\/p\/([A-Za-z0-9_-]+))"/gi);
+      var dm;
+      var chArr = [];
+      while ((dm = /data-page-url="(\/p\/([A-Za-z0-9_-]+))"/gi.exec(html)) !== null) {
+        var path2 = dm[1], pid2 = dm[2];
+        if (!pid2) continue;
+        var name = linkMap[pid2] || ("第" + (chArr.length + 1) + "页");
+        chArr.push([this._abs(path2), name]);
+      }
+      // 反转: data-page-url 通常最新在前，反转成最早在前
       for (var i = chArr.length - 1; i >= 0; i--) {
         chapters.set(chArr[i][0], chArr[i][1]);
       }
 
       return new ComicDetails({
         id: url, title: title, cover: this._abs(cover), author: author,
-        description: desc, tags: {}, status: status, chapters: chapters
+        description: desc, tags: tags, status: status, chapters: chapters
       });
     },
 
@@ -178,28 +185,19 @@ class dogemanga extends ComicSource {
       var res = await Network.get(this._abs(epId), this._headers());
       if (res.status !== 200) throw "HTTP " + res.status;
       var html = res.body;
-      // 阅读页图片：data-page-image-url / images/pages/<pageId>.jpg
       var images = [];
+      var seenImg = {};
+      // data-page-image-url 属性
       var re = /data-page-image-url="(https?:\/\/dogemanga\.com\/images\/pages\/[^"]+\.jpg)"/gi;
       var m;
-      var seenImg = {};
       while ((m = re.exec(html)) !== null) {
         var u = m[1];
         if (!seenImg[u]) { seenImg[u] = 1; images.push(u); }
       }
-      // 兜底：og:image
       if (!images.length) {
-        var ogi2 = html.match(/property="og:image"[^>]+content="(https?:\/\/dogemanga\.com\/images\/pages\/[^"]+\.jpg)"/i);
-        if (ogi2) images.push(ogi2[1]);
-      }
-      // 兜底：data-page-image-url 属性
-      if (!images.length) {
-        var re2 = /data-page-image-url="([^"]+)"/gi;
-        var m2;
-        while ((m2 = re2.exec(html)) !== null) {
-          var u2 = this._abs(m2[1]);
-          if (!seenImg[u2]) { seenImg[u2] = 1; images.push(u2); }
-        }
+        // 兜底: og:image
+        var ogi = html.match(/property="og:image"[^>]*content="(https?:\/\/dogemanga\.com\/images\/pages\/[^"]+\.jpg)"/i);
+        if (ogi) images.push(ogi[1]);
       }
       return { images: images };
     },

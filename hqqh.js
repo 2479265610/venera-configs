@@ -97,7 +97,7 @@ class hqqh extends ComicSource {
   search = {
     load: async (keyword, opts, page) => {
       var p = page || 1;
-      var url = this.baseUrl + "/index.php/custom/search?key=" + encodeURIComponent(keyword) + "&page=" + p;
+      var url = this.baseUrl + "/index.php/search?key=" + encodeURIComponent(keyword) + "&page=" + p;
       try {
         var res = await Network.get(url, this._headers());
         if (res.status !== 200) return { comics: [], maxPage: 0 };
@@ -107,22 +107,22 @@ class hqqh extends ComicSource {
     }
   };
 
-  // ====== 分类 ======
+  // ====== 分类（27 个主要标签，ID 已校正为站实际映射） ======
   category = {
     title: "七七漫画",
     parts: [{
       name: "类型", type: "fixed", itemType: "category",
       categories: [
         "热血","冒险","科幻","霸总","玄幻","校园","修真","搞笑",
-        "穿越","后宫","恋爱","悬疑","恐怖","战争","动作","古风",
-        "都市","百合","推理","竞技","纯爱","奇幻","治愈","侦探",
-        "暗黑","魔幻","武侠"
+        "穿越","后宫","耽美","恋爱","悬疑","恐怖","战争","动作",
+        "竞技","励志","架空","灵异","百合","古风","生活",
+        "都市","奇幻","纯爱","治愈"
       ],
       categoryParams: [
-        "39","40","41","42","43","44","45","46",
-        "47","48","49","50","51","52","53","54",
-        "55","56","57","58","59","60","61","62","63",
-        "64","65","66"
+        "6","7","8","9","10","11","12","13",
+        "14","15","16","17","18","19","20","21",
+        "23","24","25","26","27","28","29",
+        "31","95","96","177"
       ],
     }],
     enableRankingPage: false
