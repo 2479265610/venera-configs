@@ -276,8 +276,8 @@ class dmw2 extends ComicSource {
     ["编辑推荐", "/custom/recom"]
   ];
   explore = [
-    { title: "总点击", type: "multiPageComicList", load: async (page) => this._listPage("/custom/top", page) },
-    { title: "月点击", type: "multiPageComicList", load: async (page) => this._listPage("/custom/month", page) }
+    { title: "读漫屋2总", type: "multiPageComicList", load: async (page) => this._listPage("/custom/top", page) },
+    { title: "读漫屋2月", type: "multiPageComicList", load: async (page) => this._listPage("/custom/month", page) }
   ];
 
   // ====== 搜索 ======
