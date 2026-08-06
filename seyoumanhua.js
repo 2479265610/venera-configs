@@ -154,8 +154,8 @@ class seyoumanhua extends ComicSource {
 
   // ====== 发现页 ======
   explore = [
-    { title: "最近更新", type: "multiPageComicList", load: async (page) => this._loadApi("addtime", "0", "0", "", page || 1) },
-    { title: "人气排行", type: "multiPageComicList", load: async (page) => this._loadApi("hits", "0", "0", "", page || 1) }
+    { title: "色友更新", type: "multiPageComicList", load: async (page) => this._loadApi("addtime", "0", "0", "", page || 1) },
+    { title: "色友人气", type: "multiPageComicList", load: async (page) => this._loadApi("hits", "0", "0", "", page || 1) }
   ];
 
   // ====== 搜索 ======
