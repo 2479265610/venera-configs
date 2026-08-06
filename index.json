@@ -64,11 +64,5 @@
         "fileName": "seyoumanhua.js",
         "key": "seyoumanhua",
         "version": "1.0.0"
-    },   
-    {
-        "name": "DogeManga",
-        "fileName": "dogemanga.js",
-        "key": "dogemanga",
-        "version": "3.1.0"
     }
 ]
