@@ -162,8 +162,8 @@ class kaixinmanhua extends ComicSource {
   }
 
   explore = [
-    { title: "最近更新", type: "multiPageComicList", load: async (page) => this._updatePage(page || 1) },
-    { title: "全部漫画", type: "multiPageComicList", load: async (page) => this._listPage("/category/page", page || 1) }
+    { title: "开心漫画更新", type: "multiPageComicList", load: async (page) => this._updatePage(page || 1) },
+    { title: "开心漫画全部", type: "multiPageComicList", load: async (page) => this._listPage("/category/page", page || 1) }
   ];
 
   search = {
