@@ -75,8 +75,8 @@ class aman3 extends ComicSource {
   }
 
   explore = [
-    { title: "最近更新", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/time/st/all/page/{p}", page) },
-    { title: "人气排行", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/hits/st/all/page/{p}", page) }
+    { title: "A漫更新", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/time/st/all/page/{p}", page) },
+    { title: "A漫人气", type: "multiPageComicList", load: async (page) => this._page("/bookcata/all/ob/hits/st/all/page/{p}", page) }
   ];
 
   search = {
