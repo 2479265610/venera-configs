@@ -60,8 +60,8 @@ class wuqianmanhua extends ComicSource {
   }
 
   explore = [
-    { title: "热门漫画", type: "multiPageComicList", load: async (page) => this._filter("1", "0", page || 1) },
-    { title: "最新上架", type: "multiPageComicList", load: async (page) => this._filter("2", "0", page || 1) }
+    { title: "武芊热门", type: "multiPageComicList", load: async (page) => this._filter("1", "0", page || 1) },
+    { title: "武芊最新", type: "multiPageComicList", load: async (page) => this._filter("2", "0", page || 1) }
   ];
 
   search = {
