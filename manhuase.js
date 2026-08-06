@@ -8,7 +8,7 @@ class ManHuaShe extends ComicSource {
   key = "mamhuase";
   version = "2.0.0";
   minAppVersion = "1.0.0";
-  url = "";
+ url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/manhuase.js";
 
   baseUrl = "https://www.311s.com";
   UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
