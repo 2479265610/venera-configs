@@ -132,8 +132,8 @@ class dumanwu extends ComicSource {
   static SORTS = ["冒险", "热血", "都市", "玄幻", "悬疑", "耽美", "恋爱", "生活", "搞笑", "穿越", "修真", "后宫", "女主", "古风", "连载", "完结"];
 
   explore = [
-    { title: "精品榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/1", page) },
-    { title: "人气榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/2", page) }
+    { title: "读漫屋精品", type: "multiPageComicList", load: async (page) => this._listPage("/rank/1", page) },
+    { title: "读漫屋人气", type: "multiPageComicList", load: async (page) => this._listPage("/rank/2", page) }
   ];
 
   // ====== 搜索（POST /s，body: k=）======
