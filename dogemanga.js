@@ -71,19 +71,19 @@ class dogemanga extends ComicSource {
     return comics;
   }
 
-  // ====== 探索: legado exploreUrl ======
+  // ====== 探索 ======
   explore = [
-    { title: "热门排行", type: "multiPartPage", load: async () => {
+    { title: "热门排行", type: "multiPageComicList", load: async (page) => {
         var res = await Network.get(this.baseUrl + "/?s=0", this._headers());
         if (res.status !== 200) throw "HTTP " + res.status;
         var doc = new HtmlDocument(res.body);
-        return [{ title: "热门排行", comics: this._list(doc), viewMore: null }];
+        return { comics: this._list(doc), maxPage: 1 };
     }},
-    { title: "最新连载", type: "multiPartPage", load: async () => {
+    { title: "最新连载", type: "multiPageComicList", load: async (page) => {
         var res = await Network.get(this.baseUrl + "/?s=1", this._headers());
         if (res.status !== 200) throw "HTTP " + res.status;
         var doc = new HtmlDocument(res.body);
-        return [{ title: "最新连载", comics: this._list(doc), viewMore: null }];
+        return { comics: this._list(doc), maxPage: 1 };
     }}
   ];
 
@@ -152,14 +152,33 @@ class dogemanga extends ComicSource {
       if (ogi && !/logo/i.test(ogi[1])) cover = ogi[1];
 
       // 章节: .site-selector option (legado: -class.site-selector@option!0)
-      // 跳过第一个 option (占位)，取 value 和 text
+      // 先取 .site-selector，再取子 option（兼容 Venera querySelectorAll 限制）
       var chapters = new Map();
-      var opts = doc.querySelectorAll(".site-selector option");
-      for (var o = 1; o < opts.length; o++) {
-        var val = opts[o].attributes.value || "";
-        var chName = String(opts[o].text || "").trim();
-        if (!val || !chName) continue;
-        chapters.set(this._abs(val), chName);
+      var sel = doc.querySelector(".site-selector");
+      if (sel) {
+        var opts = sel.querySelectorAll ? sel.querySelectorAll("option") : [];
+        // 跳过第一个 option (占位 disabled selected)
+        for (var o = 1; o < opts.length; o++) {
+          var val = opts[o].attributes.value || "";
+          if (!val) continue;
+          var chName = String(opts[o].text || "").trim();
+          if (!chName) continue;
+          chapters.set(val, chName);
+        }
+      }
+      // 兜底：纯正则散扫 data-page-url（兼容旧模板）
+      if (!chapters.size) {
+        var dpRe = /data-page-url="(\/p\/([A-Za-z0-9_-]+))"/gi;
+        var dm;
+        var chArr = [];
+        while ((dm = dpRe.exec(html)) !== null) {
+          var pid = dm[2];
+          if (!pid) continue;
+          chArr.push([this._abs(dm[1]), pid]);
+        }
+        for (var i = chArr.length - 1; i >= 0; i--) {
+          chapters.set(chArr[i][0], chArr[i][1]);
+        }
       }
 
       return new ComicDetails({
