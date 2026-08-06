@@ -115,22 +115,35 @@ class dogemanga extends ComicSource {
       if (html.indexOf("連載中") >= 0 || html.indexOf("连载中") >= 0) status = "ongoing";
       else if (html.indexOf("已完結") >= 0 || html.indexOf("完結") >= 0) status = "completed";
 
-      // 封面
+      // 封面（空值保护）
       var cover = "";
       var ogi = doc.querySelector("meta[property='og:image']");
-      if (ogi) cover = ogi.attributes.content || "";
+      if (ogi) { var c = ogi.attributes.content; if (c && c.indexOf("http") === 0) cover = c; }
 
-      // 章节：参照 seyoumanhua — 按 href 模式匹配 chapter 链接
+      // 章节：正则优先（从 raw HTML 提取 option value + text）→ HtmlDocument 兜底
       var chapters = new Map();
-      var chs = doc.querySelectorAll("option");
-      var first = true;
-      for (var c = 0; c < chs.length; c++) {
-        var val = chs[c].attributes.value || "";
-        var txt = (chs[c].text || "").trim();
-        if (!val || !txt) continue;
-        if (first) { first = false; continue; }
-        if (val.indexOf("/p/") < 0) continue;
-        chapters.set(val, txt);
+      var optM = html.match(/<option[^>]+value="(https?:\/\/dogemanga\.com\/p\/[^"]+)"[^>]*>([^<]+)<\/option>/gi);
+      if (optM) {
+        var first = true;
+        for (var oi = 0; oi < optM.length; oi++) {
+          var vMatch = optM[oi].match(/value="([^"]+)"/);
+          var tMatch = optM[oi].match(/>([^<]+)</);
+          if (!vMatch || !tMatch) continue;
+          if (first) { first = false; continue; }
+          chapters.set(vMatch[1], tMatch[1].trim());
+        }
+      }
+      if (!chapters.size) {
+        var chs = doc.querySelectorAll("option");
+        var first2 = true;
+        for (var c = 0; c < chs.length; c++) {
+          var val = chs[c].attributes.value || "";
+          var txt = (chs[c].text || "").trim();
+          if (!val || !txt) continue;
+          if (first2) { first2 = false; continue; }
+          if (val.indexOf("/p/") < 0) continue;
+          chapters.set(val, txt);
+        }
       }
 
       return new ComicDetails({ id: id, title: title, cover: cover, author: author, description: desc, status: status, chapters: chapters });
