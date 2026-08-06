@@ -8,7 +8,7 @@ class ManHuaShe extends ComicSource {
   key = "mamhuase";
   version = "2.0.0";
   minAppVersion = "1.0.0";
- url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/manhuase.js";
+  url = "https://gh-proxy.org/raw.githubusercontent.com/2479265610/venera-configs/refs/heads/main/manhuase.js";
 
   baseUrl = "https://www.311s.com";
   UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
@@ -210,6 +210,7 @@ class ManHuaShe extends ComicSource {
 
       // 章节 (详情页直接列出全部，页面默认最新在前)
       // 用数组收集再反转，避免依赖 Map 的迭代器 API（Venera 可能不支持 entries/clear）
+      var chapterEls = doc.querySelectorAll("a[href*='/chapter_']");
       var chArr = [];
       for (var i = 0; i < chapterEls.length; i++) {
         var a = chapterEls[i];
