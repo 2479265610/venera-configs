@@ -123,8 +123,8 @@ class yumanhua extends ComicSource {
 
   // ====== 发现 ======
   explore = [
-    { title: "精品榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/1", page) },
-    { title: "人气榜", type: "multiPageComicList", load: async (page) => this._listPage("/rank/2", page) }
+    { title: "漫画客精品", type: "multiPageComicList", load: async (page) => this._listPage("/rank/1", page) },
+    { title: "漫画客人气", type: "multiPageComicList", load: async (page) => this._listPage("/rank/2", page) }
   ];
 
   // ====== 搜索 ======
